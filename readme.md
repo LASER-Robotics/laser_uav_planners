@@ -3,7 +3,7 @@
 <h2> Dependencies: </h2>
 <p>
 
-- [UAV Custom Msgs](https://github.com/Renataavln/uav_custom_msgs.git)
+- [UAV Custom Msgs](https://github.com/LASER-Robotics/uav_custom_msgs.git)
 
 - [Eigen](https://gitlab.com/libeigen/eigen)
 
