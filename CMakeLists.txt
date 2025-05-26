@@ -1,44 +1,64 @@
 cmake_minimum_required(VERSION 3.8)
-project(laser_uav_pmt_trajectory)
+project(laser_uav_planner)
+
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 17)
+  set(CMAKE_CXX_STANDARD_REQUIRED ON)
+  set(CMAKE_BUILD_TYPE Debug)
+endif()
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-# find dependencies
 find_package(ament_cmake REQUIRED)
-find_package(rclcpp REQUIRED)
-find_package(uav_custom_msgs REQUIRED)
+find_package(Eigen3 REQUIRED)
+find_package(laser_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
 
-add_executable(laser_uav_pmt_trajectory 
-  src/pmt_trajectory_server.cpp 
+set(dependencies
+Eigen3
+nav_msgs
+laser_msgs
+)
+
+include_directories(
+  include
+  ${EIGEN3_INCLUDE_DIR}
+)
+
+add_library(laser_uav_planner SHARED 
   src/pmm_trajectory3d.cpp 
   src/pmm_mg_trajectory3d.cpp 
   src/common.cpp
   src/pmm_trajectory.cpp
+  src/agile_planner.cpp
 )
 
-ament_target_dependencies(laser_uav_pmt_trajectory rclcpp uav_custom_msgs)
+target_include_directories(laser_uav_planner PRIVATE src/include)
 
-install(TARGETS
-  laser_uav_pmt_trajectory
-  DESTINATION lib/${PROJECT_NAME})
+ament_target_dependencies(laser_uav_planner
+  ${dependencies}
+)
 
-install(
-    DIRECTORY include src
-    DESTINATION share/${PROJECT_NAME}
+install(TARGETS laser_uav_planner
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
+)
+
+install(DIRECTORY include/
+    params
+    DESTINATION include/
 )
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
-  # the following line skips the linter which checks for copyrights
-  # comment the line when a copyright and license is added to all source files
   set(ament_cmake_copyright_FOUND TRUE)
-  # the following line skips cpplint (only works in a git repo)
-  # comment the line when this package is in a git repo and when
-  # a copyright and license is added to all source files
   set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
 endif()
 
+ament_export_include_directories(include)
+ament_export_dependencies(${dependencies})
 ament_package()

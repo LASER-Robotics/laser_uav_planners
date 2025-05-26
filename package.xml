@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>laser_uav_pmt_trajectory</name>
+  <name>laser_uav_planner</name>
   <version>0.0.0</version>
   <description>LASER UAV Package for planning of minimum-time trajectories</description>
   <maintainer email="renataaandrade02@gmail.com">renata</maintainer>
@@ -9,8 +9,8 @@
 
   <buildtool_depend>ament_cmake</buildtool_depend>
   
-  <depend>uav_custom_msgs</depend>
-  <depend>rclcpp</depend>
+  <depend>laser_msgs</depend>
+  <depend>nav_msgs</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

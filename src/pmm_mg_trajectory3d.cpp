@@ -6,7 +6,7 @@
  * 
  */
 
-#include "pmm_mg_trajectory3d.hpp"
+#include <laser_uav_planner/pmm_mg_trajectory3d.hpp>
 
 namespace pmm {
 

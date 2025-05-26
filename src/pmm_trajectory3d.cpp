@@ -6,7 +6,7 @@
  * 
  */
 
-#include "pmm_trajectory3d.hpp"
+#include <laser_uav_planner/pmm_trajectory3d.hpp>
 
 #include <algorithm>
 #include <iostream>
