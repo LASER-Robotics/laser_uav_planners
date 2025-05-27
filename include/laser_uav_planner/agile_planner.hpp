@@ -38,9 +38,10 @@ public:
   bool generateTrajectory(laser_msgs::msg::ReferenceState start_waypoint, laser_msgs::msg::ReferenceState end_waypoint);
 
   std::vector<laser_msgs::msg::ReferenceState> getTrajectory(int qty_points, nav_msgs::msg::Odometry odometry);
-  laser_msgs::msg::ReferenceState              updateReference(nav_msgs::msg::Odometry odometry);
+  laser_msgs::msg::ReferenceState updateReference(nav_msgs::msg::Odometry odometry);
 
 private:
+  int                                          total_waypoints_;
   int                                          current_waypoint_;
   std::vector<laser_msgs::msg::ReferenceState> full_trajectory_path_;
   pmm_t                                        pmm_trajectory_capsule_;

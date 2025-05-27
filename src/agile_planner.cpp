@@ -8,8 +8,8 @@ AgilePlanner::AgilePlanner() {
   /* pmm_trajectory_capsule_.max_velocity[1] = 15.0; */
   /* pmm_trajectory_capsule_.max_velocity[2] = 10.0; */
 
-  pmm_trajectory_capsule_.max_acc_norm = 34.32;
-  pmm_trajectory_capsule_.max_vel_norm = 90.0;
+  pmm_trajectory_capsule_.max_acc_norm = 13.0;
+  pmm_trajectory_capsule_.max_vel_norm = 4.0;
 
   pmm_trajectory_capsule_.use_drag                    = false;
   pmm_trajectory_capsule_.thrust_decomp_acc_precision = 0.01;
@@ -27,7 +27,7 @@ AgilePlanner::AgilePlanner() {
   pmm_trajectory_capsule_.second_run_max_iter               = 10;
 
   pmm_trajectory_capsule_.dt_precision  = 0.001;
-  pmm_trajectory_capsule_.sampling_step = 0.001;
+  pmm_trajectory_capsule_.sampling_step = 0.008;
 }
 //}
 
@@ -101,6 +101,8 @@ bool AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_wayp
     full_trajectory_path_.push_back(ref);
   }
 
+  total_waypoints_ = t_s.size();
+
   current_waypoint_ = 0;
 
   return true;
@@ -127,7 +129,24 @@ laser_msgs::msg::ReferenceState AgilePlanner::updateReference(nav_msgs::msg::Odo
 
 /* getTrajectory() //{ */
 std::vector<laser_msgs::msg::ReferenceState> AgilePlanner::getTrajectory(int qty_points, nav_msgs::msg::Odometry odometry) {
+  if (current_waypoint_ != total_waypoints_ && full_trajectory_path_.size() > 1) {
+    /* while (sqrt(pow(odometry.pose.pose.position.x - full_trajectory_path_[0].pose.position.x, 2) + */
+    /*             pow(odometry.pose.pose.position.y - full_trajectory_path_[0].pose.position.y, 2) + */
+    /*             pow(odometry.pose.pose.position.z - full_trajectory_path_[0].pose.position.z, 2)) <= 0.7 && */
+    /* full_trajectory_path_.size() > 1) { */
+    full_trajectory_path_.erase(full_trajectory_path_.begin());
+    /* } */
+  }
 
+  if ((int)full_trajectory_path_.size() >= qty_points) {
+    return std::vector<laser_msgs::msg::ReferenceState>(full_trajectory_path_.begin(), full_trajectory_path_.begin() + qty_points);
+  } else {
+    while (full_trajectory_path_.size() < qty_points) {
+      full_trajectory_path_.push_back(full_trajectory_path_[(int)full_trajectory_path_.size() - 1]);
+    }
+
+    return full_trajectory_path_;
+  }
 }
 //}
 }  // namespace laser_uav_planner
