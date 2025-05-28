@@ -14,7 +14,7 @@ AgilePlanner::AgilePlanner(pmm_t pmm_params) {
 //}
 
 /* generateTrajectory() //{ */
-bool AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_waypoint, geometry_msgs::msg::Pose end_waypoint) {
+bool AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_waypoint, geometry_msgs::msg::Pose end_waypoint, float speed, bool use_speed) {
   full_trajectory_path_.clear();
   full_trajectory_path_.shrink_to_fit();
 
@@ -41,13 +41,13 @@ bool AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_wayp
   waypoints.push_back(start_position);
   waypoints.push_back(end_position);
 
-  pmm::PMM_MG_Trajectory3D mp_tr(waypoints, start_velocity, end_velocity, pmm_trajectory_capsule_.max_acc_norm, pmm_trajectory_capsule_.max_vel_norm,
-                                 pmm_trajectory_capsule_.dt_precision, pmm_trajectory_capsule_.first_run_max_iter, pmm_trajectory_capsule_.first_run_alpha,
-                                 pmm_trajectory_capsule_.first_run_alpha_reduction_factor, pmm_trajectory_capsule_.first_run_alpha_min_threshold,
-                                 pmm_trajectory_capsule_.thrust_decomp_max_iter, pmm_trajectory_capsule_.thrust_decomp_acc_precision,
-                                 pmm_trajectory_capsule_.run_second_opt, pmm_trajectory_capsule_.second_run_max_iter, pmm_trajectory_capsule_.second_run_alpha,
-                                 pmm_trajectory_capsule_.second_run_alpha_reduction_factor, pmm_trajectory_capsule_.second_run_alpha_min_threshold,
-                                 pmm_trajectory_capsule_.use_drag, false);
+  pmm::PMM_MG_Trajectory3D mp_tr(
+      waypoints, start_velocity, end_velocity, pmm_trajectory_capsule_.max_acc_norm, use_speed ? speed : pmm_trajectory_capsule_.max_vel_norm,
+      pmm_trajectory_capsule_.dt_precision, pmm_trajectory_capsule_.first_run_max_iter, pmm_trajectory_capsule_.first_run_alpha,
+      pmm_trajectory_capsule_.first_run_alpha_reduction_factor, pmm_trajectory_capsule_.first_run_alpha_min_threshold,
+      pmm_trajectory_capsule_.thrust_decomp_max_iter, pmm_trajectory_capsule_.thrust_decomp_acc_precision, pmm_trajectory_capsule_.run_second_opt,
+      pmm_trajectory_capsule_.second_run_max_iter, pmm_trajectory_capsule_.second_run_alpha, pmm_trajectory_capsule_.second_run_alpha_reduction_factor,
+      pmm_trajectory_capsule_.second_run_alpha_min_threshold, pmm_trajectory_capsule_.use_drag, false);
 
   std::vector<pmm::Scalar>    t_s;
   std::vector<pmm::Vector<3>> p_s;
@@ -181,7 +181,7 @@ laser_msgs::msg::ReferenceState AgilePlanner::updateReference(nav_msgs::msg::Odo
 //}
 
 /* getTrajectory() //{ */
-std::vector<laser_msgs::msg::ReferenceState> AgilePlanner::getTrajectory(int qty_points, nav_msgs::msg::Odometry odometry) {
+std::vector<laser_msgs::msg::ReferenceState> AgilePlanner::getTrajectory(int qty_points) {
   if (current_waypoint_ != total_waypoints_ && full_trajectory_path_.size() > 1) {
     full_trajectory_path_.erase(full_trajectory_path_.begin());
   }

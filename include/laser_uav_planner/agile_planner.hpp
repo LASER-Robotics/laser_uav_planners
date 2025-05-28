@@ -10,22 +10,22 @@ namespace laser_uav_planner
 
 struct pmm_t
 {
-  pmm::Scalar    max_acc_norm;
-  pmm::Scalar    max_vel_norm;
-  bool           use_drag;
-  pmm::Scalar    thrust_decomp_acc_precision;
-  int            thrust_decomp_max_iter;
-  pmm::Scalar    first_run_alpha;
-  pmm::Scalar    first_run_alpha_reduction_factor;
-  pmm::Scalar    first_run_alpha_min_threshold;
-  int            first_run_max_iter;
-  bool           run_second_opt;
-  pmm::Scalar    second_run_alpha;
-  pmm::Scalar    second_run_alpha_reduction_factor;
-  pmm::Scalar    second_run_alpha_min_threshold;
-  int            second_run_max_iter;
-  pmm::Scalar    dt_precision;
-  pmm::Scalar    sampling_step;
+  pmm::Scalar max_acc_norm;
+  pmm::Scalar max_vel_norm;
+  bool        use_drag;
+  pmm::Scalar thrust_decomp_acc_precision;
+  int         thrust_decomp_max_iter;
+  pmm::Scalar first_run_alpha;
+  pmm::Scalar first_run_alpha_reduction_factor;
+  pmm::Scalar first_run_alpha_min_threshold;
+  int         first_run_max_iter;
+  bool        run_second_opt;
+  pmm::Scalar second_run_alpha;
+  pmm::Scalar second_run_alpha_reduction_factor;
+  pmm::Scalar second_run_alpha_min_threshold;
+  int         second_run_max_iter;
+  pmm::Scalar dt_precision;
+  pmm::Scalar sampling_step;
 };
 
 class AgilePlanner {
@@ -33,10 +33,10 @@ public:
   AgilePlanner();
   AgilePlanner(pmm_t pmm_params);
 
-  bool generateTrajectory(laser_msgs::msg::ReferenceState start_waypoint, geometry_msgs::msg::Pose end_waypoint);
+  bool generateTrajectory(laser_msgs::msg::ReferenceState start_waypoint, geometry_msgs::msg::Pose end_waypoint, float speed, bool use_speed);
   bool generateTrajectory(laser_msgs::msg::ReferenceState start_waypoint, std::vector<geometry_msgs::msg::Pose> waypoints, float speed);
 
-  std::vector<laser_msgs::msg::ReferenceState> getTrajectory(int qty_points, nav_msgs::msg::Odometry odometry);
+  std::vector<laser_msgs::msg::ReferenceState> getTrajectory(int qty_points);
   laser_msgs::msg::ReferenceState              updateReference(nav_msgs::msg::Odometry odometry);
 
 private:
