@@ -1,4 +1,4 @@
-/control_manager:
+/**:
   ros__parameters:
     agile_planner:
       quadrotor_parameters:
