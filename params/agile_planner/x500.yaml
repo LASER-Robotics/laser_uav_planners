@@ -3,7 +3,7 @@
     agile_planner:
       quadrotor_parameters:
         # This is a = F / M. F is maximum total thrust available
-        max_acc: 13.0 
+        max_acc: 16.0 
 
           # This is the maximum speed
         max_vel: 1.0
