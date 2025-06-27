@@ -108,7 +108,7 @@ bool AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_wayp
 
   waypoints_mp.push_back(start_position);
 
-  for (auto i = 0; i < waypoints.size(); i++) {
+  for (auto i = 0; i < (int)waypoints.size(); i++) {
     pmm::Vector<3> waypoint_intermediary;
 
     waypoint_intermediary[0] = waypoints[i].position.x;
@@ -189,7 +189,7 @@ std::vector<laser_msgs::msg::ReferenceState> AgilePlanner::getTrajectory(int qty
   if ((int)full_trajectory_path_.size() >= qty_points) {
     return std::vector<laser_msgs::msg::ReferenceState>(full_trajectory_path_.begin(), full_trajectory_path_.begin() + qty_points);
   } else {
-    while (full_trajectory_path_.size() < qty_points) {
+    while ((int)full_trajectory_path_.size() < qty_points) {
       full_trajectory_path_.push_back(full_trajectory_path_[(int)full_trajectory_path_.size() - 1]);
     }
 
