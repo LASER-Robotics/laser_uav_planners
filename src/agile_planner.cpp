@@ -118,13 +118,13 @@ bool AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_wayp
     waypoints_mp.push_back(waypoint_intermediary);
   }
 
-  pmm::PMM_MG_Trajectory3D mp_tr(waypoints_mp, start_velocity, end_velocity, pmm_trajectory_capsule_.max_acc_norm, (pmm::Scalar)speed,
-                                 pmm_trajectory_capsule_.dt_precision, pmm_trajectory_capsule_.first_run_max_iter, pmm_trajectory_capsule_.first_run_alpha,
-                                 pmm_trajectory_capsule_.first_run_alpha_reduction_factor, pmm_trajectory_capsule_.first_run_alpha_min_threshold,
-                                 pmm_trajectory_capsule_.thrust_decomp_max_iter, pmm_trajectory_capsule_.thrust_decomp_acc_precision,
-                                 pmm_trajectory_capsule_.run_second_opt, pmm_trajectory_capsule_.second_run_max_iter, pmm_trajectory_capsule_.second_run_alpha,
-                                 pmm_trajectory_capsule_.second_run_alpha_reduction_factor, pmm_trajectory_capsule_.second_run_alpha_min_threshold,
-                                 pmm_trajectory_capsule_.use_drag, false);
+  pmm::PMM_MG_Trajectory3D mp_tr(
+      waypoints_mp, start_velocity, end_velocity, pmm_trajectory_capsule_.max_acc_norm, (pmm::Scalar)std::min(speed,(float) pmm_trajectory_capsule_.max_vel_norm),
+      pmm_trajectory_capsule_.dt_precision, pmm_trajectory_capsule_.first_run_max_iter, pmm_trajectory_capsule_.first_run_alpha,
+      pmm_trajectory_capsule_.first_run_alpha_reduction_factor, pmm_trajectory_capsule_.first_run_alpha_min_threshold,
+      pmm_trajectory_capsule_.thrust_decomp_max_iter, pmm_trajectory_capsule_.thrust_decomp_acc_precision, pmm_trajectory_capsule_.run_second_opt,
+      pmm_trajectory_capsule_.second_run_max_iter, pmm_trajectory_capsule_.second_run_alpha, pmm_trajectory_capsule_.second_run_alpha_reduction_factor,
+      pmm_trajectory_capsule_.second_run_alpha_min_threshold, pmm_trajectory_capsule_.use_drag, false);
 
   std::vector<pmm::Scalar>    t_s;
   std::vector<pmm::Vector<3>> p_s;
