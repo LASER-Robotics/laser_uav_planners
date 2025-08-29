@@ -1,78 +1,57 @@
-<h1> LASER UAV Planning of Minimum-Time Trajectories </h1>
+# LASER UAV Planner
 
-<h2> Dependencies: </h2>
-<p>
+This package provides **C++ classes** that implement trajectory and motion planning algorithms for the Laser UAV System (LUS). It generates safe, optimized paths.
 
-- [UAV Custom Msgs](https://github.com/LASER-Robotics/uav_custom_msgs.git)
+## Overview and Algorithms
 
-- [Eigen](https://gitlab.com/libeigen/eigen)
+The main objective of this package is to receive a goal and, based on the vehicle's current state, generate a smooth trajectory.
 
-</p>
+### Agile Planner
+-   **Description:** A class that implements an optimal motion planning algorithm for our specific use case. It uses a **center-of-mass model with thrust constraints** to incorporate vehicle limitations while remaining lightweight enough for real-time computation.
+-   **Reference:**
+    ```bibtex
+    @article{teissing2024pmm,
+        author = "Teissing, Krystof and Novosad, Matej and Penicka, Robert and Saska, Martin",
+        doi = "10.1109/LRA.2024.3471388",
+        journal = "IEEE Robotics and Automation Letters",
+        number = 11,
+        pages = "10351-10358",
+        pdf = "[https://arxiv.org/pdf/2409.16074.pdf](https://arxiv.org/pdf/2409.16074.pdf)",
+        title = "Real-Time Planning of Minimum-Time Trajectories for Agile UAV Flight",
+        url = "[https://ieeexplore.ieee.org/document/10700666](https://ieeexplore.ieee.org/document/10700666)",
+        volume = 9,
+        year = 2024
+    }
+    ```
+-   **Configurable Parameters:**
+    ```yaml
+    agile_planner:
+      quadrotor_parameters:
+        # This is a = F / M. F is maximum total thrust available
+        max_acc: 20.0 
 
-<h2> How to install Eigen:</h2>
+        # This is the maximum speed
+        max_vel: 1.0
 
-<p>
-Put [Eigen](https://gitlab.com/libeigen/eigen) folder in your <pre> /usr/include/ </pre>
-</p>
+      ltd_opt:
+        use_drag: false
+        thrust_decomp_acc_precision: 0.01
+        thrust_decomp_max_iter: 20
 
-### Run server:
-```
-ros2 run laser_uav_pmt_trajectory laser_uav_pmt_trajectory
-```
+      first_vel_opt:
+        alpha: 10.0
+        alpha_reduction_factor: 0.2
+        alpha_min_threshold: 0.001
+        max_iter: 30
 
-### Run client with UAV model:
-```
-ros2 topic pub /uav_parameters uav_custom_msgs/msg/UAVParameters "
-maximum_acceleration_norm: 34.32
-maximum_velocity: 90.0
-gravitational_acceleration: 9.8066
-drag_coefficients: [0.28, 0.35, 0.7]
-drag: true
-precision: 0.01
-max_iter: 20
-first_run_alpha: 10.0
-first_run_alpha_reduction_factor: 0.2
-first_run_alpha_min_threshold: 0.001
-first_run_max_iter: 30
-second_run_alpha: 35.0
-second_run_alpha_reduction_factor: 0.1
-second_run_alpha_min_threshold: 0.01
-second_run_max_iter: 10
-dt_precision: 0.001
-debug: false
-sampled_trajectory: true
-sampling_step: 0.5
-sampled_trajectory_file: 'sampled_trajectory.csv'
-"
-```
+      second_vel_opt:
+        run: true
+        alpha: 35.0
+        alpha_reduction_factor: 0.1
+        alpha_min_threshold: 0.01
+        max_iter: 10
 
-
-### Run client with path:
-```
-ros2 topic pub /waypoints uav_custom_msgs/msg/Waypoints "
-start_position: [0, 0, 0]
-start_velocity: [0, 0, 0]
-end_position: [5, 5, 2.5]
-end_velocity: [0, 0, 0]
-waypoints: [0, 10, 0, 0, 10, 5, 10, 0, 5, 0, 0, 0]
-"
-```
-
-### Return:
-```
-ros2 topic echo /trajectory
-```
-
-
-```
-timestamp vector
-position_x vector
-position_y vector
-position_z vector
-velocity_x vector
-velocity_y vector
-velocity_z vector
-acceleration_x vector
-acceleration_y vector
-acceleration_z vector
-```
+      time:
+        dt_precision: 0.001 # DON'T CHANGE
+        sampling_step: 0.008 # DON'T CHANGE
+    ```
