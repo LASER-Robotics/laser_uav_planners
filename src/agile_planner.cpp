@@ -118,13 +118,14 @@ bool AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_wayp
     waypoints_mp.push_back(waypoint_intermediary);
   }
 
-  pmm::PMM_MG_Trajectory3D mp_tr(
-      waypoints_mp, start_velocity, end_velocity, pmm_trajectory_capsule_.max_acc_norm, (pmm::Scalar)std::min(speed,(float) pmm_trajectory_capsule_.max_vel_norm),
-      pmm_trajectory_capsule_.dt_precision, pmm_trajectory_capsule_.first_run_max_iter, pmm_trajectory_capsule_.first_run_alpha,
-      pmm_trajectory_capsule_.first_run_alpha_reduction_factor, pmm_trajectory_capsule_.first_run_alpha_min_threshold,
-      pmm_trajectory_capsule_.thrust_decomp_max_iter, pmm_trajectory_capsule_.thrust_decomp_acc_precision, pmm_trajectory_capsule_.run_second_opt,
-      pmm_trajectory_capsule_.second_run_max_iter, pmm_trajectory_capsule_.second_run_alpha, pmm_trajectory_capsule_.second_run_alpha_reduction_factor,
-      pmm_trajectory_capsule_.second_run_alpha_min_threshold, pmm_trajectory_capsule_.use_drag, false);
+  pmm::PMM_MG_Trajectory3D mp_tr(waypoints_mp, start_velocity, end_velocity, pmm_trajectory_capsule_.max_acc_norm,
+                                 (pmm::Scalar)std::min(speed, (float)pmm_trajectory_capsule_.max_vel_norm), pmm_trajectory_capsule_.dt_precision,
+                                 pmm_trajectory_capsule_.first_run_max_iter, pmm_trajectory_capsule_.first_run_alpha,
+                                 pmm_trajectory_capsule_.first_run_alpha_reduction_factor, pmm_trajectory_capsule_.first_run_alpha_min_threshold,
+                                 pmm_trajectory_capsule_.thrust_decomp_max_iter, pmm_trajectory_capsule_.thrust_decomp_acc_precision,
+                                 pmm_trajectory_capsule_.run_second_opt, pmm_trajectory_capsule_.second_run_max_iter, pmm_trajectory_capsule_.second_run_alpha,
+                                 pmm_trajectory_capsule_.second_run_alpha_reduction_factor, pmm_trajectory_capsule_.second_run_alpha_min_threshold,
+                                 pmm_trajectory_capsule_.use_drag, false);
 
   std::vector<pmm::Scalar>    t_s;
   std::vector<pmm::Vector<3>> p_s;
@@ -133,6 +134,7 @@ bool AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_wayp
 
   std::tie(t_s, p_s, v_s, a_s) = mp_tr.get_sampled_trajectory(pmm_trajectory_capsule_.sampling_step);
 
+  int j = -1;
   for (auto i = 0; i < (int)t_s.size(); i++) {
     laser_msgs::msg::ReferenceState ref;
 
@@ -140,7 +142,16 @@ bool AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_wayp
     ref.pose.position.y = p_s[i][1];
     ref.pose.position.z = p_s[i][2];
 
-    /* ref.pose.orientation = end_waypoint.orientation; */
+    if (sqrt(pow(waypoints[j + 1].position.x - p_s[i][0], 2) + pow(waypoints[j + 1].position.y - p_s[i][1], 2) +
+             pow(waypoints[j + 1].position.z - p_s[i][2], 2)) <= 0.001) {
+      j++;
+    }
+
+    if (j == -1) {
+      ref.pose.orientation = start_waypoint.pose.orientation;
+    } else {
+      ref.pose.orientation = waypoints[j].orientation;
+    }
 
     ref.twist.linear.x = v_s[i][0];
     ref.twist.linear.y = v_s[i][1];
