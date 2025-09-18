@@ -1,4 +1,4 @@
-# LASER UAV Planner
+# LASER UAV Planners
 
 This package provides **C++ classes** that implement trajectory and motion planning algorithms for the Laser UAV System (LUS). It generates safe, optimized paths.
 
