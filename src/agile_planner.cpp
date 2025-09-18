@@ -1,6 +1,6 @@
-#include <laser_uav_planner/agile_planner.hpp>
+#include <laser_uav_planners/agile_planner.hpp>
 
-namespace laser_uav_planner
+namespace laser_uav_planners
 {
 /* AgilePlanner() {default} //{ */
 AgilePlanner::AgilePlanner() {
@@ -327,4 +327,4 @@ std::vector<laser_msgs::msg::ReferenceState> AgilePlanner::getTrajectory(int qty
   }
 }
 //}
-}  // namespace laser_uav_planner
+}  // namespace laser_uav_planners

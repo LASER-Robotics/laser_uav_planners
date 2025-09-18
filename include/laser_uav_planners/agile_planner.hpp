@@ -1,11 +1,11 @@
-#include <laser_uav_planner/common.hpp>
-#include <laser_uav_planner/pmm_trajectory3d.hpp>
-#include <laser_uav_planner/pmm_mg_trajectory3d.hpp>
+#include <laser_uav_planners/common.hpp>
+#include <laser_uav_planners/pmm_trajectory3d.hpp>
+#include <laser_uav_planners/pmm_mg_trajectory3d.hpp>
 
 #include <nav_msgs/msg/odometry.hpp>
 #include <laser_msgs/msg/reference_state.hpp>
 
-namespace laser_uav_planner
+namespace laser_uav_planners
 {
 
 ///* quadrotor_t //{ */
@@ -63,4 +63,4 @@ private:
   Eigen::Matrix3d inertia_matrix_;
   Eigen::MatrixXd G1_;
 };
-}  // namespace laser_uav_planner
+}  // namespace laser_uav_planners

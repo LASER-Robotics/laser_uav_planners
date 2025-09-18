@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(laser_uav_planner)
+project(laser_uav_planners)
 
 if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 17)
@@ -27,7 +27,7 @@ include_directories(
   ${EIGEN3_INCLUDE_DIR}
 )
 
-add_library(laser_uav_planner SHARED 
+add_library(laser_uav_planners SHARED 
   src/pmm_trajectory3d.cpp 
   src/pmm_mg_trajectory3d.cpp 
   src/common.cpp
@@ -35,13 +35,13 @@ add_library(laser_uav_planner SHARED
   src/agile_planner.cpp
 )
 
-target_include_directories(laser_uav_planner PRIVATE src/include)
+target_include_directories(laser_uav_planners PRIVATE src/include)
 
-ament_target_dependencies(laser_uav_planner
+ament_target_dependencies(laser_uav_planners
   ${dependencies}
 )
 
-install(TARGETS laser_uav_planner
+install(TARGETS laser_uav_planners
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
