@@ -6,7 +6,7 @@
  * 
  */
 
-#include <laser_uav_planner/common.hpp>
+#include <laser_uav_planners/common.hpp>
 
 namespace pmm {
 
