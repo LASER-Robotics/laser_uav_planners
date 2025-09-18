@@ -8,6 +8,17 @@
 namespace laser_uav_planner
 {
 
+///* quadrotor_t //{ */
+struct quadrotor_t
+{
+  double          mass;
+  int             n_motors;
+  Eigen::MatrixXd G1;
+  Eigen::Matrix3d inertia_matrix;
+};
+//}
+
+/* pmm_t //{ */
 struct pmm_t
 {
   pmm::Scalar max_acc_norm;
@@ -27,22 +38,29 @@ struct pmm_t
   pmm::Scalar dt_precision;
   pmm::Scalar sampling_step;
 };
+//}
 
 class AgilePlanner {
 public:
   AgilePlanner();
-  AgilePlanner(pmm_t pmm_params);
+  AgilePlanner(quadrotor_t quadrotor_params, pmm_t pmm_params);
 
   bool generateTrajectory(laser_msgs::msg::ReferenceState start_waypoint, geometry_msgs::msg::Pose end_waypoint, float speed, bool use_speed);
   bool generateTrajectory(laser_msgs::msg::ReferenceState start_waypoint, std::vector<geometry_msgs::msg::Pose> waypoints, float speed);
 
   std::vector<laser_msgs::msg::ReferenceState> getTrajectory(int qty_points);
-  laser_msgs::msg::ReferenceState              updateReference(nav_msgs::msg::Odometry odometry);
 
 private:
+  Eigen::Matrix3d generateRotationMatrix(Eigen::Vector3d& acceleration);
+  Eigen::Vector4d generateIndividualThrust(Eigen::Vector3d& acceleration, Eigen::Vector3d& omega);
+
   int                                          total_waypoints_;
   int                                          current_waypoint_;
   std::vector<laser_msgs::msg::ReferenceState> full_trajectory_path_;
   pmm_t                                        pmm_trajectory_capsule_;
+
+  double          mass_;
+  Eigen::Matrix3d inertia_matrix_;
+  Eigen::MatrixXd G1_;
 };
 }  // namespace laser_uav_planner
