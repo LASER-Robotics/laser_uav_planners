@@ -6,7 +6,7 @@
         max_acc: 30.0 
 
         # This is the maximum speed
-        max_vel: 20.0
+        max_vel: 1.0
 
       ltd_opt:
         use_drag: false
