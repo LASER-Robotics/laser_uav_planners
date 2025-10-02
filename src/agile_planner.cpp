@@ -20,13 +20,13 @@ AgilePlanner::AgilePlanner(quadrotor_t quadrotor_params, pmm_t pmm_params) {
 //}
 
 /* generateRotationMatrix() //{ */
-Eigen::Matrix3d AgilePlanner::generateRotationMatrix(Eigen::Vector3d& acceleration) {
+Eigen::Matrix3d AgilePlanner::generateRotationMatrix(Eigen::Vector3d& acceleration, double desired_heading) {
   Eigen::Vector3d       g(0.0, 0.0, -9.81);
-  const Eigen::Vector3d thrust = mass_ * (acceleration - g);
+  const Eigen::Vector3d thrust = mass_ * ((acceleration * -1) - g);
 
   const Eigen::Vector3d z_b_des = thrust.normalized();
 
-  const Eigen::Vector3d x_c(1.0, 0.0, 0.0);
+  const Eigen::Vector3d x_c(1.0 * cos(desired_heading), 1.0 * sin(desired_heading), 0.0);
 
   const Eigen::Vector3d y_b_des = z_b_des.cross(x_c).normalized();
   const Eigen::Vector3d x_b_des = y_b_des.cross(z_b_des);
@@ -43,7 +43,7 @@ Eigen::Matrix3d AgilePlanner::generateRotationMatrix(Eigen::Vector3d& accelerati
 /* generateIndividualThrust() //{ */
 Eigen::Vector4d AgilePlanner::generateIndividualThrust(Eigen::Vector3d& acceleration, Eigen::Vector3d& omega) {
   Eigen::Vector3d g(0.0, 0.0, -9.81);
-  Eigen::Vector3d thrust       = mass_ * (acceleration - g);
+  Eigen::Vector3d thrust       = mass_ * ((acceleration * -1) - g);
   double          total_thrust = thrust.norm();
 
   /* Eigen::Vector3d alpharef = (current_omega - last_omega) / pmm_trajectory_capsule_.sampling_step; */
@@ -58,7 +58,8 @@ Eigen::Vector4d AgilePlanner::generateIndividualThrust(Eigen::Vector3d& accelera
 //}
 
 /* generateTrajectory() //{ */
-bool AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_waypoint, geometry_msgs::msg::Pose end_waypoint, float speed, bool use_speed) {
+bool AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_waypoint, laser_msgs::msg::PoseWithHeading end_waypoint, float speed,
+                                      bool use_speed) {
   full_trajectory_path_.clear();
   full_trajectory_path_.shrink_to_fit();
 
@@ -85,8 +86,13 @@ bool AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_wayp
   waypoints.push_back(start_position);
   waypoints.push_back(end_position);
 
+  speed = std::min((pmm::Scalar)speed, pmm_trajectory_capsule_.max_vel_norm);
+  if (speed <= 0) {
+    speed = pmm_trajectory_capsule_.default_vel_norm;
+  }
+
   pmm::PMM_MG_Trajectory3D mp_tr(
-      waypoints, start_velocity, end_velocity, pmm_trajectory_capsule_.max_acc_norm, use_speed ? speed : pmm_trajectory_capsule_.max_vel_norm,
+      waypoints, start_velocity, end_velocity, pmm_trajectory_capsule_.max_acc_norm, use_speed ? speed : pmm_trajectory_capsule_.default_vel_norm,
       pmm_trajectory_capsule_.dt_precision, pmm_trajectory_capsule_.first_run_max_iter, pmm_trajectory_capsule_.first_run_alpha,
       pmm_trajectory_capsule_.first_run_alpha_reduction_factor, pmm_trajectory_capsule_.first_run_alpha_min_threshold,
       pmm_trajectory_capsule_.thrust_decomp_max_iter, pmm_trajectory_capsule_.thrust_decomp_acc_precision, pmm_trajectory_capsule_.run_second_opt,
@@ -127,8 +133,8 @@ bool AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_wayp
       Eigen::Vector3d last_acceleration;
       last_acceleration << a_s[i - 1][0], a_s[i - 1][1], a_s[i - 1][2];
 
-      Eigen::Matrix3d rotation_matrix      = generateRotationMatrix(acceleration);
-      Eigen::Matrix3d last_rotation_matrix = generateRotationMatrix(last_acceleration);
+      Eigen::Matrix3d rotation_matrix      = generateRotationMatrix(acceleration, end_waypoint.heading);
+      Eigen::Matrix3d last_rotation_matrix = generateRotationMatrix(last_acceleration, end_waypoint.heading);
 
       Eigen::Quaterniond q   = Eigen::Quaterniond(rotation_matrix);
       ref.pose.orientation.w = q.w();
@@ -154,17 +160,18 @@ bool AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_wayp
 
       last_omega = current_omega;
     } else {
-      ref.pose.orientation.w = 1;
-      ref.pose.orientation.x = 0;
-      ref.pose.orientation.y = 0;
-      ref.pose.orientation.z = 0;
-      ref.use_orientation       = false;
+      if (i != 0 || t_s.size() == 1) {
+        Eigen::Quaterniond q   = Eigen::Quaterniond(Eigen::AngleAxisd(end_waypoint.heading, Eigen::Vector3d(0.0, 0.0, 1.0).normalized()));
+        ref.pose.orientation.w = q.w();
+        ref.pose.orientation.x = q.x();
+        ref.pose.orientation.y = q.y();
+        ref.pose.orientation.z = q.z();
+      } else {
+        ref.pose.orientation = start_waypoint.pose.orientation;
+      }
+      ref.use_orientation = true;
 
-      ref.twist.angular.x = 0.0;
-      ref.twist.angular.y = 0.0;
-      ref.twist.angular.z = 0.0;
       ref.use_angular_velocity  = false;
-
       ref.use_individual_thrust = false;
     }
 
@@ -180,7 +187,7 @@ bool AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_wayp
 //}
 
 /* generateTrajectory() //{ */
-bool AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_waypoint, std::vector<geometry_msgs::msg::Pose> waypoints, float speed) {
+bool AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_waypoint, std::vector<laser_msgs::msg::PoseWithHeading> waypoints, float speed) {
   full_trajectory_path_.clear();
   full_trajectory_path_.shrink_to_fit();
 
@@ -212,6 +219,10 @@ bool AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_wayp
     waypoints_mp.push_back(waypoint_intermediary);
   }
 
+  if (speed <= 0) {
+    speed = pmm_trajectory_capsule_.default_vel_norm;
+  }
+
   pmm::PMM_MG_Trajectory3D mp_tr(waypoints_mp, start_velocity, end_velocity, pmm_trajectory_capsule_.max_acc_norm,
                                  (pmm::Scalar)std::min(speed, (float)pmm_trajectory_capsule_.max_vel_norm), pmm_trajectory_capsule_.dt_precision,
                                  pmm_trajectory_capsule_.first_run_max_iter, pmm_trajectory_capsule_.first_run_alpha,
@@ -228,7 +239,8 @@ bool AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_wayp
 
   std::tie(t_s, p_s, v_s, a_s) = mp_tr.get_sampled_trajectory(pmm_trajectory_capsule_.sampling_step);
 
-  int             j = -1;
+  /* int             j = -1; */
+  int             j = 0;
   Eigen::Vector3d last_omega(0.0, 0.0, 0.0);
   Eigen::Vector3d current_omega(0.0, 0.0, 0.0);
   for (auto i = 0; i < (int)t_s.size(); i++) {
@@ -244,17 +256,6 @@ bool AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_wayp
     ref.twist.linear.z      = v_s[i][2];
     ref.use_linear_velocity = true;
 
-    /* if (sqrt(pow(waypoints[j + 1].position.x - p_s[i][0], 2) + pow(waypoints[j + 1].position.y - p_s[i][1], 2) + */
-    /*          pow(waypoints[j + 1].position.z - p_s[i][2], 2)) <= 0.001) { */
-    /*   j++; */
-    /* } */
-
-    /* if (j == -1) { */
-    /*   ref.pose.orientation = start_waypoint.pose.orientation; */
-    /* } else { */
-    /*   ref.pose.orientation = waypoints[j].orientation; */
-    /* } */
-
     ref.individual_thrust.data.push_back(0);
     ref.individual_thrust.data.push_back(0);
     ref.individual_thrust.data.push_back(0);
@@ -267,10 +268,14 @@ bool AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_wayp
       Eigen::Vector3d last_acceleration;
       last_acceleration << a_s[i - 1][0], a_s[i - 1][1], a_s[i - 1][2];
 
-      Eigen::Matrix3d rotation_matrix      = generateRotationMatrix(acceleration);
-      Eigen::Matrix3d last_rotation_matrix = generateRotationMatrix(last_acceleration);
+      Eigen::Matrix3d rotation_matrix      = generateRotationMatrix(acceleration, waypoints[j].heading);
+      Eigen::Matrix3d last_rotation_matrix = generateRotationMatrix(last_acceleration, waypoints[j + 1].heading);
 
-      Eigen::Quaterniond q   = Eigen::Quaterniond(rotation_matrix);
+      if (sqrt(pow(waypoints[j].position.x - p_s[i][0], 2) + pow(waypoints[j].position.y - p_s[i][1], 2) + pow(waypoints[j].position.z - p_s[i][2], 2)) <=
+          0.001) {
+        j++;
+      }
+      Eigen::Quaterniond q   = Eigen::Quaterniond(Eigen::AngleAxisd(waypoints[j].heading, Eigen::Vector3d(0.0, 0.0, 1.0).normalized()));
       ref.pose.orientation.w = q.w();
       ref.pose.orientation.x = q.x();
       ref.pose.orientation.y = q.y();
@@ -294,7 +299,17 @@ bool AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_wayp
 
       last_omega = current_omega;
     } else {
-      ref.use_orientation       = false;
+      if (i != 0 || t_s.size() == 1) {
+        Eigen::Quaterniond q   = Eigen::Quaterniond(Eigen::AngleAxisd(waypoints[waypoints.size() - 1].heading, Eigen::Vector3d(0.0, 0.0, 1.0).normalized()));
+        ref.pose.orientation.w = q.w();
+        ref.pose.orientation.x = q.x();
+        ref.pose.orientation.y = q.y();
+        ref.pose.orientation.z = q.z();
+      } else {
+        ref.pose.orientation = start_waypoint.pose.orientation;
+      }
+      ref.use_orientation = true;
+
       ref.use_angular_velocity  = false;
       ref.use_individual_thrust = false;
     }

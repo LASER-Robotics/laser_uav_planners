@@ -4,6 +4,7 @@
 
 #include <nav_msgs/msg/odometry.hpp>
 #include <laser_msgs/msg/reference_state.hpp>
+#include <laser_msgs/msg/pose_with_heading.hpp>
 
 namespace laser_uav_planners
 {
@@ -23,6 +24,7 @@ struct pmm_t
 {
   pmm::Scalar max_acc_norm;
   pmm::Scalar max_vel_norm;
+  pmm::Scalar default_vel_norm;
   bool        use_drag;
   pmm::Scalar thrust_decomp_acc_precision;
   int         thrust_decomp_max_iter;
@@ -45,13 +47,13 @@ public:
   AgilePlanner();
   AgilePlanner(quadrotor_t quadrotor_params, pmm_t pmm_params);
 
-  bool generateTrajectory(laser_msgs::msg::ReferenceState start_waypoint, geometry_msgs::msg::Pose end_waypoint, float speed, bool use_speed);
-  bool generateTrajectory(laser_msgs::msg::ReferenceState start_waypoint, std::vector<geometry_msgs::msg::Pose> waypoints, float speed);
+  bool generateTrajectory(laser_msgs::msg::ReferenceState start_waypoint, laser_msgs::msg::PoseWithHeading end_waypoint, float speed, bool use_speed);
+  bool generateTrajectory(laser_msgs::msg::ReferenceState start_waypoint, std::vector<laser_msgs::msg::PoseWithHeading> waypoints, float speed);
 
   std::vector<laser_msgs::msg::ReferenceState> getTrajectory(int qty_points);
 
 private:
-  Eigen::Matrix3d generateRotationMatrix(Eigen::Vector3d& acceleration);
+  Eigen::Matrix3d generateRotationMatrix(Eigen::Vector3d& acceleration, double desired_heading);
   Eigen::Vector4d generateIndividualThrust(Eigen::Vector3d& acceleration, Eigen::Vector3d& omega);
 
   int                                          total_waypoints_;
