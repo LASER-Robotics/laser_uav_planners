@@ -52,6 +52,8 @@ public:
 
   std::vector<laser_msgs::msg::ReferenceState> getTrajectory(int qty_points);
 
+  bool isHover();
+
 private:
   Eigen::Matrix3d generateRotationMatrix(Eigen::Vector3d& acceleration, double desired_heading);
   Eigen::Vector4d generateIndividualThrust(Eigen::Vector3d& acceleration, Eigen::Vector3d& omega);
