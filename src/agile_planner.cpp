@@ -136,7 +136,7 @@ bool AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_wayp
       Eigen::Matrix3d rotation_matrix      = generateRotationMatrix(acceleration, end_waypoint.heading);
       Eigen::Matrix3d last_rotation_matrix = generateRotationMatrix(last_acceleration, end_waypoint.heading);
 
-      Eigen::Quaterniond q   = Eigen::Quaterniond(rotation_matrix);
+      Eigen::Quaterniond q   = Eigen::Quaterniond(Eigen::AngleAxisd(end_waypoint.heading, Eigen::Vector3d(0.0, 0.0, 1.0).normalized()));
       ref.pose.orientation.w = q.w();
       ref.pose.orientation.x = q.x();
       ref.pose.orientation.y = q.y();
