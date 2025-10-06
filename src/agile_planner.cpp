@@ -347,7 +347,7 @@ std::vector<laser_msgs::msg::ReferenceState> AgilePlanner::getTrajectory(int qty
 bool AgilePlanner::isHover() {
   if (sqrt(pow(full_trajectory_path_[0].pose.position.x - full_trajectory_path_[full_trajectory_path_.size() - 1].pose.position.x, 2) +
            pow(full_trajectory_path_[0].pose.position.y - full_trajectory_path_[full_trajectory_path_.size() - 1].pose.position.y, 2) +
-           pow(full_trajectory_path_[0].pose.position.z - full_trajectory_path_[full_trajectory_path_.size() - 1].pose.position.z, 2))) {
+           pow(full_trajectory_path_[0].pose.position.z - full_trajectory_path_[full_trajectory_path_.size() - 1].pose.position.z, 2)) == 0.0) {
     return true;
   } else {
     return false;
