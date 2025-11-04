@@ -30,4 +30,4 @@
 
       time:
         dt_precision: 0.001
-        sampling_step: 0.0085 # DON'T CHANGE
+        sampling_step: 0.0095 # DON'T CHANGE

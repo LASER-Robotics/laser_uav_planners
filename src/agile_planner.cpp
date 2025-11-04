@@ -150,6 +150,7 @@ bool AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_wayp
       current_omega(1) = ref.twist.angular.y = s_matrix(0, 2);
       current_omega(2) = ref.twist.angular.z = s_matrix(1, 0);
       ref.use_angular_velocity               = true;
+      /* ref.use_angular_velocity               = false; */
 
       Eigen::Vector4d individual_thrust = generateIndividualThrust(acceleration, current_omega);
       ref.individual_thrust.data[0]     = individual_thrust(0);
@@ -288,6 +289,7 @@ bool AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_wayp
       current_omega(0) = ref.twist.angular.x = s_matrix(2, 1);
       current_omega(1) = ref.twist.angular.y = s_matrix(0, 2);
       current_omega(2) = ref.twist.angular.z = s_matrix(1, 0);
+      /* ref.use_angular_velocity               = false; */
       ref.use_angular_velocity               = true;
 
       Eigen::Vector4d individual_thrust = generateIndividualThrust(acceleration, current_omega);
