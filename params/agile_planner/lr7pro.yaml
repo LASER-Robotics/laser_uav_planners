@@ -1,14 +1,16 @@
 /**/**:
   ros__parameters:
     agile_planner:
-      quadrotor_parameters:
+      multirotor_parameters:
         # This is a = F / M. F is maximum total thrust available
-        max_acc: 30.0 
+        max_accel: 30.0 
 
         # This is the maximum speed
         max_vel: 16.0
 
         default_vel: 1.0
+
+        absolute_maximum_angular_accel: 5.0
 
       ltd_opt:
         use_drag: false

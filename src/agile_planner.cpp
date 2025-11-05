@@ -41,19 +41,31 @@ Eigen::Matrix3d AgilePlanner::generateRotationMatrix(Eigen::Vector3d& accelerati
 //}
 
 /* generateIndividualThrust() //{ */
-Eigen::Vector4d AgilePlanner::generateIndividualThrust(Eigen::Vector3d& acceleration, Eigen::Vector3d& omega) {
+Eigen::Vector4d AgilePlanner::generateIndividualThrust(Eigen::Vector3d& acceleration, Eigen::Vector3d& current_omega, Eigen::Vector3d& last_omega) {
   Eigen::Vector3d g(0.0, 0.0, -9.81);
   Eigen::Vector3d thrust       = mass_ * ((acceleration * -1) - g);
   double          total_thrust = thrust.norm();
 
-  /* Eigen::Vector3d alpharef = (current_omega - last_omega) / pmm_trajectory_capsule_.sampling_step; */
+  Eigen::Vector3d alpharef = (current_omega - last_omega) / pmm_trajectory_capsule_.sampling_step;
 
-  Eigen::Vector3d torque = omega.cross(inertia_matrix_ * omega);
+  Eigen::Vector3d torque = (inertia_matrix_ * alpharef) + current_omega.cross(inertia_matrix_ * current_omega);
 
   Eigen::Vector4d wrench;
   wrench << total_thrust, torque;
 
   return G1_.inverse() * wrench;
+}
+//}
+
+/* saturateAngularAcceleration() //{ */
+double AgilePlanner::saturateAngularAcceleration(double current_angular_velocity_component, double last_angular_velocity_component, double dt) {
+  double angular_acceleration = (current_angular_velocity_component - last_angular_velocity_component) / dt;
+
+  if (angular_acceleration > pmm_trajectory_capsule_.absolute_maximum_angular_accel || angular_acceleration < -pmm_trajectory_capsule_.absolute_maximum_angular_accel) {
+    return ((pmm_trajectory_capsule_.absolute_maximum_angular_accel * (current_angular_velocity_component / std::abs(current_angular_velocity_component))) * dt) + last_angular_velocity_component;
+  } else {
+    return current_angular_velocity_component;
+  }
 }
 //}
 
@@ -92,7 +104,7 @@ bool AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_wayp
   }
 
   pmm::PMM_MG_Trajectory3D mp_tr(
-      waypoints, start_velocity, end_velocity, pmm_trajectory_capsule_.max_acc_norm, use_speed ? speed : pmm_trajectory_capsule_.default_vel_norm,
+      waypoints, start_velocity, end_velocity, pmm_trajectory_capsule_.max_accel_norm, use_speed ? speed : pmm_trajectory_capsule_.default_vel_norm,
       pmm_trajectory_capsule_.dt_precision, pmm_trajectory_capsule_.first_run_max_iter, pmm_trajectory_capsule_.first_run_alpha,
       pmm_trajectory_capsule_.first_run_alpha_reduction_factor, pmm_trajectory_capsule_.first_run_alpha_min_threshold,
       pmm_trajectory_capsule_.thrust_decomp_max_iter, pmm_trajectory_capsule_.thrust_decomp_acc_precision, pmm_trajectory_capsule_.run_second_opt,
@@ -149,10 +161,13 @@ bool AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_wayp
       current_omega(0) = ref.twist.angular.x = s_matrix(2, 1);
       current_omega(1) = ref.twist.angular.y = s_matrix(0, 2);
       current_omega(2) = ref.twist.angular.z = s_matrix(1, 0);
+      // Saturate angular_acceleration try to add minimum angular_acceleration atribute in planner
+      current_omega(0) = ref.twist.angular.x = saturateAngularAcceleration(current_omega(0), last_omega(0), pmm_trajectory_capsule_.sampling_step);
+      current_omega(1) = ref.twist.angular.y = saturateAngularAcceleration(current_omega(1), last_omega(1), pmm_trajectory_capsule_.sampling_step);
+      current_omega(2) = ref.twist.angular.z = saturateAngularAcceleration(current_omega(2), last_omega(2), pmm_trajectory_capsule_.sampling_step);
       ref.use_angular_velocity               = true;
-      /* ref.use_angular_velocity               = false; */
 
-      Eigen::Vector4d individual_thrust = generateIndividualThrust(acceleration, current_omega);
+      Eigen::Vector4d individual_thrust = generateIndividualThrust(acceleration, current_omega, last_omega);
       ref.individual_thrust.data[0]     = individual_thrust(0);
       ref.individual_thrust.data[1]     = individual_thrust(1);
       ref.individual_thrust.data[2]     = individual_thrust(2);
@@ -224,7 +239,7 @@ bool AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_wayp
     speed = pmm_trajectory_capsule_.default_vel_norm;
   }
 
-  pmm::PMM_MG_Trajectory3D mp_tr(waypoints_mp, start_velocity, end_velocity, pmm_trajectory_capsule_.max_acc_norm,
+  pmm::PMM_MG_Trajectory3D mp_tr(waypoints_mp, start_velocity, end_velocity, pmm_trajectory_capsule_.max_accel_norm,
                                  (pmm::Scalar)std::min(speed, (float)pmm_trajectory_capsule_.max_vel_norm), pmm_trajectory_capsule_.dt_precision,
                                  pmm_trajectory_capsule_.first_run_max_iter, pmm_trajectory_capsule_.first_run_alpha,
                                  pmm_trajectory_capsule_.first_run_alpha_reduction_factor, pmm_trajectory_capsule_.first_run_alpha_min_threshold,
@@ -289,10 +304,13 @@ bool AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_wayp
       current_omega(0) = ref.twist.angular.x = s_matrix(2, 1);
       current_omega(1) = ref.twist.angular.y = s_matrix(0, 2);
       current_omega(2) = ref.twist.angular.z = s_matrix(1, 0);
-      /* ref.use_angular_velocity               = false; */
+      // Saturate angular_acceleration try to add minimum angular_acceleration atribute in planner
+      current_omega(0) = ref.twist.angular.x = saturateAngularAcceleration(current_omega(0), last_omega(0), pmm_trajectory_capsule_.sampling_step);
+      current_omega(1) = ref.twist.angular.y = saturateAngularAcceleration(current_omega(1), last_omega(1), pmm_trajectory_capsule_.sampling_step);
+      current_omega(2) = ref.twist.angular.z = saturateAngularAcceleration(current_omega(2), last_omega(2), pmm_trajectory_capsule_.sampling_step);
       ref.use_angular_velocity               = true;
 
-      Eigen::Vector4d individual_thrust = generateIndividualThrust(acceleration, current_omega);
+      Eigen::Vector4d individual_thrust = generateIndividualThrust(acceleration, current_omega, last_omega);
       ref.individual_thrust.data[0]     = individual_thrust(0);
       ref.individual_thrust.data[1]     = individual_thrust(1);
       ref.individual_thrust.data[2]     = individual_thrust(2);

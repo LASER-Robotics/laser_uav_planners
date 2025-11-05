@@ -22,7 +22,7 @@ struct quadrotor_t
 /* pmm_t //{ */
 struct pmm_t
 {
-  pmm::Scalar max_acc_norm;
+  pmm::Scalar max_accel_norm;
   pmm::Scalar max_vel_norm;
   pmm::Scalar default_vel_norm;
   bool        use_drag;
@@ -39,6 +39,7 @@ struct pmm_t
   int         second_run_max_iter;
   pmm::Scalar dt_precision;
   pmm::Scalar sampling_step;
+  double      absolute_maximum_angular_accel;
 };
 //}
 
@@ -56,7 +57,8 @@ public:
 
 private:
   Eigen::Matrix3d generateRotationMatrix(Eigen::Vector3d& acceleration, double desired_heading);
-  Eigen::Vector4d generateIndividualThrust(Eigen::Vector3d& acceleration, Eigen::Vector3d& omega);
+  Eigen::Vector4d generateIndividualThrust(Eigen::Vector3d& acceleration, Eigen::Vector3d& current_omega, Eigen::Vector3d& last_omega);
+  double saturateAngularAcceleration(double current_angular_velocity_component, double last_angular_velocity_component, double dt);
 
   int                                          total_waypoints_;
   int                                          current_waypoint_;
