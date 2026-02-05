@@ -10,8 +10,6 @@
 
         default_vel: 1.0
 
-        absolute_maximum_angular_accel: 3.0
-
       ltd_opt:
         use_drag: false
         thrust_decomp_acc_precision: 0.01
