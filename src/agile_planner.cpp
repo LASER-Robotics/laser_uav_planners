@@ -87,7 +87,7 @@ void AgilePlanner::processImpulse(int window) {
 //}
 
 /* generateTrajectory() //{ */
-bool AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_waypoint, laser_msgs::msg::PoseWithHeading end_waypoint, float speed,
+bool AgilePlanner::generateTrajectory(nav_msgs::msg::Odometry start_waypoint, laser_msgs::msg::PoseWithHeading end_waypoint, float speed,
                                       bool use_speed) {
   full_trajectory_path_.clear();
   full_trajectory_path_.shrink_to_fit();
@@ -98,12 +98,12 @@ bool AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_wayp
   pmm::Vector<3>              end_velocity;
   std::vector<pmm::Vector<3>> waypoints;
 
-  start_position[0] = start_waypoint.pose.position.x;
-  start_position[1] = start_waypoint.pose.position.y;
-  start_position[2] = start_waypoint.pose.position.z;
-  start_velocity[0] = start_waypoint.twist.linear.x;
-  start_velocity[1] = start_waypoint.twist.linear.y;
-  start_velocity[2] = start_waypoint.twist.linear.z;
+  start_position[0] = start_waypoint.pose.pose.position.x;
+  start_position[1] = start_waypoint.pose.pose.position.y;
+  start_position[2] = start_waypoint.pose.pose.position.z;
+  start_velocity[0] = start_waypoint.twist.twist.linear.x;
+  start_velocity[1] = start_waypoint.twist.twist.linear.y;
+  start_velocity[2] = start_waypoint.twist.twist.linear.z;
 
   end_position[0] = end_waypoint.position.x;
   end_position[1] = end_waypoint.position.y;
@@ -190,7 +190,7 @@ bool AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_wayp
         ref.pose.orientation.y = q.y();
         ref.pose.orientation.z = q.z();
       } else {
-        ref.pose.orientation = start_waypoint.pose.orientation;
+        ref.pose.orientation = start_waypoint.pose.pose.orientation;
       }
       ref.use_orientation = true;
 
@@ -211,7 +211,7 @@ bool AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_wayp
 //}
 
 /* generateTrajectory() //{ */
-bool AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_waypoint, std::vector<laser_msgs::msg::PoseWithHeading> waypoints, float speed) {
+bool AgilePlanner::generateTrajectory(nav_msgs::msg::Odometry start_waypoint, std::vector<laser_msgs::msg::PoseWithHeading> waypoints, float speed) {
   full_trajectory_path_.clear();
   full_trajectory_path_.shrink_to_fit();
 
@@ -220,12 +220,12 @@ bool AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_wayp
   pmm::Vector<3>              end_velocity;
   std::vector<pmm::Vector<3>> waypoints_mp;
 
-  start_position[0] = start_waypoint.pose.position.x;
-  start_position[1] = start_waypoint.pose.position.y;
-  start_position[2] = start_waypoint.pose.position.z;
-  start_velocity[0] = start_waypoint.twist.linear.x;
-  start_velocity[1] = start_waypoint.twist.linear.y;
-  start_velocity[2] = start_waypoint.twist.linear.z;
+  start_position[0] = start_waypoint.pose.pose.position.x;
+  start_position[1] = start_waypoint.pose.pose.position.y;
+  start_position[2] = start_waypoint.pose.pose.position.z;
+  start_velocity[0] = start_waypoint.twist.twist.linear.x;
+  start_velocity[1] = start_waypoint.twist.twist.linear.y;
+  start_velocity[2] = start_waypoint.twist.twist.linear.z;
 
   end_velocity[0] = 0;
   end_velocity[1] = 0;
@@ -325,7 +325,7 @@ bool AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_wayp
         ref.pose.orientation.y = q.y();
         ref.pose.orientation.z = q.z();
       } else {
-        ref.pose.orientation = start_waypoint.pose.orientation;
+        ref.pose.orientation = start_waypoint.pose.pose.orientation;
       }
       ref.use_orientation = true;
 
