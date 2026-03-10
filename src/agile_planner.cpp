@@ -26,7 +26,7 @@ Eigen::Matrix3d AgilePlanner::generateRotationMatrix(Eigen::Vector3d& accelerati
 
   const Eigen::Vector3d z_b_des = thrust.normalized();
 
-  const Eigen::Vector3d x_c(1.0 , 0.0, 0.0);
+  const Eigen::Vector3d x_c(1.0, 0.0, 0.0);
 
   const Eigen::Vector3d y_b_des = z_b_des.cross(x_c).normalized();
   const Eigen::Vector3d x_b_des = y_b_des.cross(z_b_des);
@@ -87,8 +87,7 @@ void AgilePlanner::processImpulse(int window) {
 //}
 
 /* generateTrajectory() //{ */
-bool AgilePlanner::generateTrajectory(nav_msgs::msg::Odometry start_waypoint, laser_msgs::msg::PoseWithHeading end_waypoint, float speed,
-                                      bool use_speed) {
+bool AgilePlanner::generateTrajectory(nav_msgs::msg::Odometry start_waypoint, laser_msgs::msg::PoseWithHeading end_waypoint, float speed, bool use_speed) {
   full_trajectory_path_.clear();
   full_trajectory_path_.shrink_to_fit();
 
@@ -176,7 +175,7 @@ bool AgilePlanner::generateTrajectory(nav_msgs::msg::Odometry start_waypoint, la
       ref.use_angular_velocity               = true;
 
       Eigen::VectorXd individual_thrust = generateIndividualThrust(acceleration, current_omega);
-      ref.individual_thrust.data = std::vector<double>(individual_thrust.data(), individual_thrust.data() + individual_thrust.size());
+      ref.individual_thrust.data        = std::vector<double>(individual_thrust.data(), individual_thrust.data() + individual_thrust.size());
       ref.use_individual_thrust         = true;
 
       last_omega = current_omega;
@@ -263,7 +262,6 @@ bool AgilePlanner::generateTrajectory(nav_msgs::msg::Odometry start_waypoint, st
 
   std::tie(t_s, p_s, v_s, a_s) = mp_tr.get_sampled_trajectory(pmm_trajectory_capsule_.sampling_step);
 
-  /* int             j = -1; */
   int             j = 0;
   Eigen::Vector3d last_omega(0.0, 0.0, 0.0);
   Eigen::Vector3d current_omega(0.0, 0.0, 0.0);
@@ -290,18 +288,18 @@ bool AgilePlanner::generateTrajectory(nav_msgs::msg::Odometry start_waypoint, st
       Eigen::Matrix3d rotation_matrix      = generateRotationMatrix(acceleration);
       Eigen::Matrix3d last_rotation_matrix = generateRotationMatrix(last_acceleration);
 
-      if (sqrt(pow(waypoints[j].position.x - p_s[i][0], 2) + pow(waypoints[j].position.y - p_s[i][1], 2) + pow(waypoints[j].position.z - p_s[i][2], 2)) <=
-          0.001) {
-        j++;
-      }
-
-      Eigen::Quaterniond q =
-          Eigen::Quaterniond(rotation_matrix) * Eigen::Quaterniond(Eigen::AngleAxisd(waypoints[j].heading, Eigen::Vector3d(0.0, 0.0, 1.0).normalized()));
+      Eigen::Quaterniond q = Eigen::Quaterniond(rotation_matrix * pmm_trajectory_capsule_.sampling_step) *
+                             Eigen::Quaterniond(Eigen::AngleAxisd(waypoints[j].heading, Eigen::Vector3d(0.0, 0.0, 1.0).normalized()));
       ref.pose.orientation.w = q.w();
       ref.pose.orientation.x = q.x();
       ref.pose.orientation.y = q.y();
       ref.pose.orientation.z = q.z();
       ref.use_orientation    = true;
+
+      if (sqrt(pow(waypoints[j].position.x - p_s[i][0], 2) + pow(waypoints[j].position.y - p_s[i][1], 2) + pow(waypoints[j].position.z - p_s[i][2], 2)) <=
+          0.1) {
+        j++;
+      }
 
       Eigen::Matrix3d dot_rotation_matrix = (rotation_matrix - last_rotation_matrix) / pmm_trajectory_capsule_.sampling_step;
       Eigen::Matrix3d s_matrix            = rotation_matrix.transpose() * dot_rotation_matrix;
@@ -312,22 +310,18 @@ bool AgilePlanner::generateTrajectory(nav_msgs::msg::Odometry start_waypoint, st
       ref.use_angular_velocity               = true;
 
       Eigen::VectorXd individual_thrust = generateIndividualThrust(acceleration, current_omega);
-      ref.individual_thrust.data = std::vector<double>(individual_thrust.data(), individual_thrust.data() + individual_thrust.size());
+      ref.individual_thrust.data        = std::vector<double>(individual_thrust.data(), individual_thrust.data() + individual_thrust.size());
       ref.use_individual_thrust         = true;
 
       last_omega = current_omega;
     } else {
       ref.individual_thrust.data = std::vector<double>(G1_.cols());
-      if (i != 0 || t_s.size() == 1) {
-        Eigen::Quaterniond q   = Eigen::Quaterniond(Eigen::AngleAxisd(waypoints[waypoints.size() - 1].heading, Eigen::Vector3d(0.0, 0.0, 1.0).normalized()));
-        ref.pose.orientation.w = q.w();
-        ref.pose.orientation.x = q.x();
-        ref.pose.orientation.y = q.y();
-        ref.pose.orientation.z = q.z();
-      } else {
-        ref.pose.orientation = start_waypoint.pose.pose.orientation;
-      }
-      ref.use_orientation = true;
+      Eigen::Quaterniond q       = Eigen::Quaterniond(Eigen::AngleAxisd(waypoints[j].heading, Eigen::Vector3d(0.0, 0.0, 1.0).normalized()));
+      ref.pose.orientation.w     = q.w();
+      ref.pose.orientation.x     = q.x();
+      ref.pose.orientation.y     = q.y();
+      ref.pose.orientation.z     = q.z();
+      ref.use_orientation        = true;
 
       ref.use_angular_velocity  = false;
       ref.use_individual_thrust = false;
