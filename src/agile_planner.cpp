@@ -159,7 +159,7 @@ bool AgilePlanner::generateTrajectory(nav_msgs::msg::Odometry start_waypoint, la
       Eigen::Matrix3d rotation_matrix      = generateRotationMatrix(acceleration);
       Eigen::Matrix3d last_rotation_matrix = generateRotationMatrix(last_acceleration);
 
-      Eigen::Quaterniond q   = Eigen::Quaterniond(Eigen::AngleAxisd(end_waypoint.heading, Eigen::Vector3d(0.0, 0.0, 1.0).normalized()));
+      Eigen::Quaterniond q   = Eigen::Quaterniond(Eigen::AngleAxisd(end_waypoint.heading, Eigen::Vector3d(0.0, 0.0, 1.0))).normalized();
       ref.pose.orientation.w = q.w();
       ref.pose.orientation.x = q.x();
       ref.pose.orientation.y = q.y();
@@ -183,7 +183,7 @@ bool AgilePlanner::generateTrajectory(nav_msgs::msg::Odometry start_waypoint, la
       ref.individual_thrust.data = std::vector<double>(G1_.cols());
 
       if (i != 0 || t_s.size() == 1) {
-        Eigen::Quaterniond q   = Eigen::Quaterniond(Eigen::AngleAxisd(end_waypoint.heading, Eigen::Vector3d(0.0, 0.0, 1.0).normalized()));
+        Eigen::Quaterniond q   = Eigen::Quaterniond(Eigen::AngleAxisd(end_waypoint.heading, Eigen::Vector3d(0.0, 0.0, 1.0))).normalized();
         ref.pose.orientation.w = q.w();
         ref.pose.orientation.x = q.x();
         ref.pose.orientation.y = q.y();
@@ -288,8 +288,8 @@ bool AgilePlanner::generateTrajectory(nav_msgs::msg::Odometry start_waypoint, st
       Eigen::Matrix3d rotation_matrix      = generateRotationMatrix(acceleration);
       Eigen::Matrix3d last_rotation_matrix = generateRotationMatrix(last_acceleration);
 
-      Eigen::Quaterniond q = Eigen::Quaterniond(rotation_matrix * pmm_trajectory_capsule_.sampling_step) *
-                             Eigen::Quaterniond(Eigen::AngleAxisd(waypoints[j].heading, Eigen::Vector3d(0.0, 0.0, 1.0).normalized()));
+      Eigen::Quaterniond q = (Eigen::Quaterniond(rotation_matrix * pmm_trajectory_capsule_.sampling_step) *
+                             Eigen::Quaterniond(Eigen::AngleAxisd(waypoints[j].heading, Eigen::Vector3d(0.0, 0.0, 1.0)))).normalized();
       ref.pose.orientation.w = q.w();
       ref.pose.orientation.x = q.x();
       ref.pose.orientation.y = q.y();
@@ -316,7 +316,7 @@ bool AgilePlanner::generateTrajectory(nav_msgs::msg::Odometry start_waypoint, st
       last_omega = current_omega;
     } else {
       ref.individual_thrust.data = std::vector<double>(G1_.cols());
-      Eigen::Quaterniond q       = Eigen::Quaterniond(Eigen::AngleAxisd(waypoints[j].heading, Eigen::Vector3d(0.0, 0.0, 1.0).normalized()));
+      Eigen::Quaterniond q       = Eigen::Quaterniond(Eigen::AngleAxisd(waypoints[j].heading, Eigen::Vector3d(0.0, 0.0, 1.0))).normalized();
       ref.pose.orientation.w     = q.w();
       ref.pose.orientation.x     = q.x();
       ref.pose.orientation.y     = q.y();
