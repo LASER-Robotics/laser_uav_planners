@@ -8,14 +8,14 @@ AgilePlanner::AgilePlanner() {
 //}
 
 /* AgilePlanner() //{ */
-AgilePlanner::AgilePlanner(quadrotor_t quadrotor_params, pmm_t pmm_params) {
+AgilePlanner::AgilePlanner(multirotor_t multirotor_params, pmm_t pmm_params) {
   pmm_trajectory_capsule_ = pmm_params;
 
-  mass_ = quadrotor_params.mass;
+  mass_ = multirotor_params.mass;
 
-  G1_ = quadrotor_params.G1;
+  G1_ = multirotor_params.G1;
 
-  inertia_matrix_ = quadrotor_params.inertia_matrix;
+  inertia_matrix_ = multirotor_params.inertia_matrix;
 }
 //}
 
@@ -93,6 +93,7 @@ bool AgilePlanner::generateTrajectory(nav_msgs::msg::Odometry start_waypoint, la
 
   pmm::Vector<3>              start_position;
   pmm::Vector<3>              start_velocity;
+  pmm::Vector<3>              mid_position;
   pmm::Vector<3>              end_position;
   pmm::Vector<3>              end_velocity;
   std::vector<pmm::Vector<3>> waypoints;
@@ -111,7 +112,12 @@ bool AgilePlanner::generateTrajectory(nav_msgs::msg::Odometry start_waypoint, la
   end_velocity[1] = 0;
   end_velocity[2] = 0;
 
+  mid_position[0] = start_position[0] + ((end_position[0] - start_position[0]) / 2);
+  mid_position[1] = start_position[1] + ((end_position[1] - start_position[1]) / 2);
+  mid_position[2] = start_position[2] + ((end_position[2] - start_position[2]) / 2);
+
   waypoints.push_back(start_position);
+  waypoints.push_back(mid_position);
   waypoints.push_back(end_position);
 
   speed = std::min((pmm::Scalar)speed, pmm_trajectory_capsule_.max_vel_norm);
@@ -372,6 +378,12 @@ bool AgilePlanner::isHover() {
   } else {
     return false;
   }
+}
+//}
+
+/* setMass() //{ */
+void AgilePlanner::setMass(double mass) {
+  mass_ = mass;
 }
 //}
 }  // namespace laser_uav_planners

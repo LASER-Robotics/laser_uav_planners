@@ -11,8 +11,8 @@
 namespace laser_uav_planners
 {
 
-///* quadrotor_t //{ */
-struct quadrotor_t
+///* multirotor_t //{ */
+struct multirotor_t
 {
   double          mass;
   int             n_motors;
@@ -47,7 +47,7 @@ struct pmm_t
 class AgilePlanner {
 public:
   AgilePlanner();
-  AgilePlanner(quadrotor_t quadrotor_params, pmm_t pmm_params);
+  AgilePlanner(multirotor_t multirotor_params, pmm_t pmm_params);
 
   bool generateTrajectory(nav_msgs::msg::Odometry start_waypoint, laser_msgs::msg::PoseWithHeading end_waypoint, float speed, bool use_speed);
   bool generateTrajectory(nav_msgs::msg::Odometry start_waypoint, std::vector<laser_msgs::msg::PoseWithHeading> waypoints, float speed);
@@ -55,6 +55,7 @@ public:
   std::vector<laser_msgs::msg::ReferenceState> getTrajectory(int qty_points);
 
   bool isHover();
+  void setMass(double mass);
 
 private:
   Eigen::Matrix3d generateRotationMatrix(Eigen::Vector3d& acceleration);
