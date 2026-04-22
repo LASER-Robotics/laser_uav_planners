@@ -88,6 +88,7 @@ void AgilePlanner::processImpulse(int window) {
 
 /* generateTrajectory() //{ */
 bool AgilePlanner::generateTrajectory(nav_msgs::msg::Odometry start_waypoint, laser_msgs::msg::PoseWithHeading end_waypoint, float speed, bool use_speed) {
+  current_anchor_time_ = -1.0;
   full_trajectory_path_.clear();
   full_trajectory_path_.shrink_to_fit();
 
@@ -133,16 +134,16 @@ bool AgilePlanner::generateTrajectory(nav_msgs::msg::Odometry start_waypoint, la
       pmm_trajectory_capsule_.second_run_max_iter, pmm_trajectory_capsule_.second_run_alpha, pmm_trajectory_capsule_.second_run_alpha_reduction_factor,
       pmm_trajectory_capsule_.second_run_alpha_min_threshold, pmm_trajectory_capsule_.use_drag, false);
 
-  std::vector<pmm::Scalar>    t_s;
+  /* std::vector<pmm::Scalar>    t_s; */
   std::vector<pmm::Vector<3>> p_s;
   std::vector<pmm::Vector<3>> v_s;
   std::vector<pmm::Vector<3>> a_s;
 
-  std::tie(t_s, p_s, v_s, a_s) = mp_tr.get_sampled_trajectory(pmm_trajectory_capsule_.sampling_step);
+  std::tie(trajectory_time_, p_s, v_s, a_s) = mp_tr.get_sampled_trajectory(pmm_trajectory_capsule_.sampling_step);
 
   Eigen::Vector3d last_omega(0.0, 0.0, 0.0);
   Eigen::Vector3d current_omega(0.0, 0.0, 0.0);
-  for (auto i = 0; i < (int)t_s.size(); i++) {
+  for (auto i = 0; i < (int)trajectory_time_.size(); i++) {
     laser_msgs::msg::ReferenceState ref;
 
     ref.pose.position.x = p_s[i][0];
@@ -156,7 +157,7 @@ bool AgilePlanner::generateTrajectory(nav_msgs::msg::Odometry start_waypoint, la
     ref.use_linear_velocity = true;
 
     // Fill all states reference (adjust for aproximate full model)
-    if (i > 0 && i < (int)t_s.size() - 1) {
+    if (i > 0 && i < (int)trajectory_time_.size() - 1) {
       Eigen::Vector3d acceleration;
       acceleration << a_s[i][0], a_s[i][1], a_s[i][2];
       Eigen::Vector3d last_acceleration;
@@ -207,7 +208,7 @@ bool AgilePlanner::generateTrajectory(nav_msgs::msg::Odometry start_waypoint, la
   }
   processImpulse(200);
 
-  total_waypoints_ = t_s.size();
+  total_waypoints_ = trajectory_time_.size();
 
   current_waypoint_ = 0;
 
@@ -217,6 +218,8 @@ bool AgilePlanner::generateTrajectory(nav_msgs::msg::Odometry start_waypoint, la
 
 /* generateTrajectory() //{ */
 bool AgilePlanner::generateTrajectory(nav_msgs::msg::Odometry start_waypoint, std::vector<laser_msgs::msg::PoseWithHeading> waypoints, float speed) {
+
+  current_anchor_time_ = -1.0;
   full_trajectory_path_.clear();
   full_trajectory_path_.shrink_to_fit();
 
@@ -261,17 +264,17 @@ bool AgilePlanner::generateTrajectory(nav_msgs::msg::Odometry start_waypoint, st
                                  pmm_trajectory_capsule_.second_run_alpha_reduction_factor, pmm_trajectory_capsule_.second_run_alpha_min_threshold,
                                  pmm_trajectory_capsule_.use_drag, false);
 
-  std::vector<pmm::Scalar>    t_s;
+  /* std::vector<pmm::Scalar>    t_s; */
   std::vector<pmm::Vector<3>> p_s;
   std::vector<pmm::Vector<3>> v_s;
   std::vector<pmm::Vector<3>> a_s;
 
-  std::tie(t_s, p_s, v_s, a_s) = mp_tr.get_sampled_trajectory(pmm_trajectory_capsule_.sampling_step);
+  std::tie(trajectory_time_, p_s, v_s, a_s) = mp_tr.get_sampled_trajectory(pmm_trajectory_capsule_.sampling_step);
 
   int             j = 0;
   Eigen::Vector3d last_omega(0.0, 0.0, 0.0);
   Eigen::Vector3d current_omega(0.0, 0.0, 0.0);
-  for (auto i = 0; i < (int)t_s.size(); i++) {
+  for (auto i = 0; i < (int)trajectory_time_.size(); i++) {
     laser_msgs::msg::ReferenceState ref;
 
     ref.pose.position.x = p_s[i][0];
@@ -285,7 +288,7 @@ bool AgilePlanner::generateTrajectory(nav_msgs::msg::Odometry start_waypoint, st
     ref.use_linear_velocity = true;
 
     // Fill all states reference (adjust for aproximate full model)
-    if (i > 0 && i < (int)t_s.size() - 1) {
+    if (i > 0 && i < (int)trajectory_time_.size() - 1) {
       Eigen::Vector3d acceleration;
       acceleration << a_s[i][0], a_s[i][1], a_s[i][2];
       Eigen::Vector3d last_acceleration;
@@ -343,7 +346,7 @@ bool AgilePlanner::generateTrajectory(nav_msgs::msg::Odometry start_waypoint, st
   }
   processImpulse(200);
 
-  total_waypoints_ = t_s.size();
+  total_waypoints_ = trajectory_time_.size();
 
   current_waypoint_ = 0;
 
@@ -352,21 +355,362 @@ bool AgilePlanner::generateTrajectory(nav_msgs::msg::Odometry start_waypoint, st
 //}
 
 /* getTrajectory() //{ */
-std::vector<laser_msgs::msg::ReferenceState> AgilePlanner::getTrajectory(int qty_points) {
-  if (current_waypoint_ != total_waypoints_ && full_trajectory_path_.size() > 1) {
+/* std::vector<laser_msgs::msg::ReferenceState> AgilePlanner::getTrajectory(int qty_points) { */
+/*   if (current_waypoint_ != total_waypoints_ && full_trajectory_path_.size() > 1) { */
+/*     trajectory_time_.erase(trajectory_time_.begin()); */
+/*     full_trajectory_path_.erase(full_trajectory_path_.begin()); */
+/*   } */
+
+/*   if ((int)full_trajectory_path_.size() >= qty_points) { */
+/*     auto                                         aux = 0; */
+/*     float                                        dt  = 0.05; */
+/*     std::vector<laser_msgs::msg::ReferenceState> sampled_trajectory; */
+/*     sampled_trajectory_.push_back(full_trajectory_path_[0]); */
+/*     for (auto i = 0; i < trajectory_time_.size(); i++) { */
+/*       if (std::abs(trajectory_time_[i] - trajectory_time[i + 1]) >= 0.05) { */
+/*         sampled_trajectoy_.push_back(full_trajectory_path_[i + 1]); */
+/*       } */
+/*     } */
+/*     return std::vector<laser_msgs::msg::ReferenceState>(full_trajectory_path_.begin(), full_trajectory_path_.begin() + qty_points); */
+/*   } else { */
+/*     while ((int)full_trajectory_path_.size() < qty_points) { */
+/*       full_trajectory_path_.push_back(full_trajectory_path_[(int)full_trajectory_path_.size() - 1]); */
+/*     } */
+
+/*     return full_trajectory_path_; */
+/*   } */
+/* } */
+/* std::vector<laser_msgs::msg::ReferenceState> AgilePlanner::getTrajectory(int qty_points) { */
+/*   // Avança a trajetória descartando o ponto passado (se não for o waypoint final) */
+/*   if (current_waypoint_ != total_waypoints_ && full_trajectory_path_.size() > 1) { */
+/*     trajectory_time_.erase(trajectory_time_.begin()); */
+/*     full_trajectory_path_.erase(full_trajectory_path_.begin()); */
+/*   } */
+
+/*   std::vector<laser_msgs::msg::ReferenceState> sampled_trajectory; */
+
+/*   // Se houver caminho disponível, faz a amostragem baseada no tempo */
+/*   if (!full_trajectory_path_.empty() && !trajectory_time_.empty()) { */
+/*     float dt = 0.05f; */
+    
+/*     // Adiciona o ponto atual como início do horizonte */
+/*     sampled_trajectory.push_back(full_trajectory_path_[0]); */
+/*     double last_sampled_time = trajectory_time_[0]; */
+
+/*     // Itera pelo caminho, respeitando o dt, até encher o horizonte (qty_points) */
+/*     for (size_t i = 1; i < trajectory_time_.size() && (int)sampled_trajectory.size() < qty_points; ++i) { */
+/*       if (std::abs(trajectory_time_[i] - last_sampled_time) >= dt) { */
+/*         sampled_trajectory.push_back(full_trajectory_path_[i]); */
+/*         last_sampled_time = trajectory_time_[i]; // Atualiza o tempo de referência */
+/*         std::cout << last_sampled_time << std::endl; */
+/*       } */
+/*     } */
+/*   } */
+
+/*   // Preenche (pad) com o último estado de referência caso não tenha atingido qty_points */
+/*   // Isso garante que o horizonte de controle mantenha o tamanho constante */
+/*   while ((int)sampled_trajectory.size() < qty_points) { */
+/*     if (!sampled_trajectory.empty()) { */
+/*       // Repete o último estado da amostragem (Drone deve manter a posição no final do trajeto) */
+/*       sampled_trajectory.push_back(sampled_trajectory.back()); */
+/*     } else { */
+/*       // Fallback de segurança se as listas globais estiverem vazias */
+/*       sampled_trajectory.push_back(laser_msgs::msg::ReferenceState()); */
+/*     } */
+/*   } */
+
+/*   return sampled_trajectory; */
+/* } */
+/* std::vector<laser_msgs::msg::ReferenceState> AgilePlanner::getTrajectory(int qty_points) { */
+/*   // Avança a trajetória descartando o ponto passado (se não for o waypoint final) */
+/*   if (current_waypoint_ != total_waypoints_ && full_trajectory_path_.size() > 1) { */
+/*     trajectory_time_.erase(trajectory_time_.begin()); */
+/*     full_trajectory_path_.erase(full_trajectory_path_.begin()); */
+/*   } */
+
+/*   std::vector<laser_msgs::msg::ReferenceState> sampled_trajectory; */
+
+/*   if (!full_trajectory_path_.empty() && !trajectory_time_.empty()) { */
+/*     float dt = 0.05f; */
+    
+/*     // Consideramos o índice 0 como o tempo de "onde estou agora" */
+/*     double last_sampled_time = trajectory_time_[0] + dt; */
+
+/*     // Começamos do índice 1 e procuramos o primeiro ponto que esteja a pelo menos 'dt' de distância. */
+/*     // Assim, o primeiro elemento do sampled_trajectory será exatamente o (agora + dt). */
+/*     for (size_t i = 1; i < trajectory_time_.size() && (int)sampled_trajectory.size() < qty_points; ++i) { */
+/*       if ((trajectory_time_[i] - last_sampled_time) >= dt) { */
+/*         sampled_trajectory.push_back(full_trajectory_path_[i]); */
+/*         last_sampled_time = trajectory_time_[i]; // Atualiza a âncora */
+/*         std::cout << last_sampled_time << std::endl; */
+/*       } */
+/*     } */
+
+/*     // Failsafe: Se o drone estiver tão perto do final que o tempo restante da trajetória */
+/*     // é menor que 0.05s, o loop acima não adicionará nada. Garantimos pelo menos 1 ponto. */
+/*     if (sampled_trajectory.empty()) { */
+/*       sampled_trajectory.push_back(full_trajectory_path_.back()); */
+/*     } */
+/*   } */
+
+/*   // Preenchimento (Padding) para garantir a matriz de tamanho constante para o solver */
+/*   while ((int)sampled_trajectory.size() < qty_points) { */
+/*     if (!sampled_trajectory.empty()) { */
+/*       // Repete o último estado da amostragem (mantém o hover no final) */
+/*       sampled_trajectory.push_back(sampled_trajectory.back()); */
+/*     } else { */
+/*       // Fallback de segurança extremo */
+/*       sampled_trajectory.push_back(laser_msgs::msg::ReferenceState()); */
+/*     } */
+/*   } */
+
+/*   return sampled_trajectory; */
+/* } */
+/* #include <cmath>     // Para std::sqrt e std::abs */
+/* #include <algorithm> // Para std::lower_bound */
+void AgilePlanner::resetPlannerTime() {
+  is_first_call_ = true;
+}
+
+std::vector<laser_msgs::msg::ReferenceState> AgilePlanner::getTrajectory(int qty_points, double current_ros_time) {
+  std::vector<laser_msgs::msg::ReferenceState> sampled_trajectory;
+
+  if (full_trajectory_path_.empty() || trajectory_time_.empty()) {
+    return std::vector<laser_msgs::msg::ReferenceState>(qty_points, laser_msgs::msg::ReferenceState());
+  }
+
+  // --- A MÁGICA DO TEMPO ZERO ---
+  if (is_first_call_) {
+    // Na primeiríssima vez que o NMPC pedir a referência, nós cravamos
+    // o relógio da missão usando o tempo exato desse milissegundo.
+    start_sim_time_ = current_ros_time;
+    is_first_call_ = false;
+  }
+
+  // O tempo decorrido agora é calculado internamente.
+  // Na primeira chamada, elapsed_time será matematicamente = 0.0
+  double elapsed_time = current_ros_time - start_sim_time_;
+  // ------------------------------
+
+  double dt = 0.05;
+  double delay_compensation = 0.05; // Opcional: Lookahead para compensar o solver
+
+  for (int k = 0; k < qty_points; ++k) {
+    // Na primeira chamada (elapsed_time = 0), o alvo do NMPC no nó k=0 
+    // será exatamente o tempo 0.0 da trajetória (+ o lookahead se usar).
+    double target_time = elapsed_time + delay_compensation + (k * dt);
+
+    auto it = std::lower_bound(trajectory_time_.begin(), trajectory_time_.end(), target_time);
+
+    // Condição: Antes do início (Segurança)
+    if (it == trajectory_time_.begin()) {
+      sampled_trajectory.push_back(full_trajectory_path_.front());
+      continue;
+    }
+
+    // Condição: Fim da trajetória (Mantém Hover final)
+    if (it == trajectory_time_.end()) {
+      sampled_trajectory.push_back(full_trajectory_path_.back());
+      continue;
+    }
+
+    // Interpolação Matemática
+    int idx_next = std::distance(trajectory_time_.begin(), it);
+    int idx_prev = idx_next - 1;
+
+    double t_prev = trajectory_time_[idx_prev];
+    double t_next = trajectory_time_[idx_next];
+    double alpha = (target_time - t_prev) / (t_next - t_prev);
+
+    auto state_prev = full_trajectory_path_[idx_prev];
+    auto state_next = full_trajectory_path_[idx_next];
+    
+    laser_msgs::msg::ReferenceState interp_state;
+    interp_state.use_position = state_prev.use_position;
+    interp_state.use_orientation = state_prev.use_orientation;
+    interp_state.use_linear_velocity = state_prev.use_linear_velocity;
+    interp_state.use_angular_velocity = state_prev.use_angular_velocity;
+    interp_state.use_individual_thrust = state_prev.use_individual_thrust;
+
+    // Posição
+    interp_state.pose.position.x = state_prev.pose.position.x + alpha * (state_next.pose.position.x - state_prev.pose.position.x);
+    interp_state.pose.position.y = state_prev.pose.position.y + alpha * (state_next.pose.position.y - state_prev.pose.position.y);
+    interp_state.pose.position.z = state_prev.pose.position.z + alpha * (state_next.pose.position.z - state_prev.pose.position.z);
+
+    // Orientação (NLERP com Shortest Path)
+    double q_dot = state_prev.pose.orientation.w * state_next.pose.orientation.w +
+                   state_prev.pose.orientation.x * state_next.pose.orientation.x +
+                   state_prev.pose.orientation.y * state_next.pose.orientation.y +
+                   state_prev.pose.orientation.z * state_next.pose.orientation.z;
+
+    double q_w = state_next.pose.orientation.w;
+    double q_x = state_next.pose.orientation.x;
+    double q_y = state_next.pose.orientation.y;
+    double q_z = state_next.pose.orientation.z;
+
+    if (q_dot < 0.0) { q_w = -q_w; q_x = -q_x; q_y = -q_y; q_z = -q_z; }
+
+    interp_state.pose.orientation.w = state_prev.pose.orientation.w + alpha * (q_w - state_prev.pose.orientation.w);
+    interp_state.pose.orientation.x = state_prev.pose.orientation.x + alpha * (q_x - state_prev.pose.orientation.x);
+    interp_state.pose.orientation.y = state_prev.pose.orientation.y + alpha * (q_y - state_prev.pose.orientation.y);
+    interp_state.pose.orientation.z = state_prev.pose.orientation.z + alpha * (q_z - state_prev.pose.orientation.z);
+
+    double norm = std::sqrt(interp_state.pose.orientation.w * interp_state.pose.orientation.w +
+                            interp_state.pose.orientation.x * interp_state.pose.orientation.x +
+                            interp_state.pose.orientation.y * interp_state.pose.orientation.y +
+                            interp_state.pose.orientation.z * interp_state.pose.orientation.z);
+    
+    interp_state.pose.orientation.w /= norm; interp_state.pose.orientation.x /= norm;
+    interp_state.pose.orientation.y /= norm; interp_state.pose.orientation.z /= norm;
+
+    // Twist Linear e Angular
+    interp_state.twist.linear.x = state_prev.twist.linear.x + alpha * (state_next.twist.linear.x - state_prev.twist.linear.x);
+    interp_state.twist.linear.y = state_prev.twist.linear.y + alpha * (state_next.twist.linear.y - state_prev.twist.linear.y);
+    interp_state.twist.linear.z = state_prev.twist.linear.z + alpha * (state_next.twist.linear.z - state_prev.twist.linear.z);
+
+    interp_state.twist.angular.x = state_prev.twist.angular.x + alpha * (state_next.twist.angular.x - state_prev.twist.angular.x);
+    interp_state.twist.angular.y = state_prev.twist.angular.y + alpha * (state_next.twist.angular.y - state_prev.twist.angular.y);
+    interp_state.twist.angular.z = state_prev.twist.angular.z + alpha * (state_next.twist.angular.z - state_prev.twist.angular.z);
+
+    // Thrust Individual
+    interp_state.individual_thrust.unit_of_measurement = state_prev.individual_thrust.unit_of_measurement;
+    if (state_prev.individual_thrust.data.size() == state_next.individual_thrust.data.size()) {
+      for (size_t i = 0; i < state_prev.individual_thrust.data.size(); ++i) {
+        double interpolated_thrust = state_prev.individual_thrust.data[i] + alpha * (state_next.individual_thrust.data[i] - state_prev.individual_thrust.data[i]);
+        interp_state.individual_thrust.data.push_back(interpolated_thrust);
+      }
+    } else {
+      interp_state.individual_thrust.data = state_prev.individual_thrust.data; 
+    }
+
+    sampled_trajectory.push_back(interp_state);
+  }
+
+  // Descarte Lazy de Memória
+  while (trajectory_time_.size() > 2 && trajectory_time_[1] < elapsed_time - 1.0) {
+    trajectory_time_.erase(trajectory_time_.begin());
     full_trajectory_path_.erase(full_trajectory_path_.begin());
   }
 
-  if ((int)full_trajectory_path_.size() >= qty_points) {
-    return std::vector<laser_msgs::msg::ReferenceState>(full_trajectory_path_.begin(), full_trajectory_path_.begin() + qty_points);
-  } else {
-    while ((int)full_trajectory_path_.size() < qty_points) {
-      full_trajectory_path_.push_back(full_trajectory_path_[(int)full_trajectory_path_.size() - 1]);
-    }
-
-    return full_trajectory_path_;
-  }
+  return sampled_trajectory;
 }
+
+/* std::vector<laser_msgs::msg::ReferenceState> AgilePlanner::getTrajectory(int qty_points, double elapsed_time) { */
+/*   std::cout << elapsed_time << std::endl; */
+/*   std::vector<laser_msgs::msg::ReferenceState> sampled_trajectory; */
+
+/*   if (full_trajectory_path_.empty() || trajectory_time_.empty()) { */
+/*     return std::vector<laser_msgs::msg::ReferenceState>(qty_points, laser_msgs::msg::ReferenceState()); */
+/*   } */
+
+/*   double dt = 0.05; */
+/*   double delay_compensation = 0.05; */ 
+
+/*   for (int k = 0; k < qty_points; ++k) { */
+/*     double target_time = elapsed_time + delay_compensation + (k * dt); */
+/*     auto it = std::lower_bound(trajectory_time_.begin(), trajectory_time_.end(), target_time); */
+
+/*     if (it == trajectory_time_.begin()) { */
+/*       sampled_trajectory.push_back(full_trajectory_path_.front()); */
+/*       continue; */
+/*     } */
+/*     if (it == trajectory_time_.end()) { */
+/*       sampled_trajectory.push_back(full_trajectory_path_.back()); */
+/*       continue; */
+/*     } */
+
+/*     int idx_next = std::distance(trajectory_time_.begin(), it); */
+/*     int idx_prev = idx_next - 1; */
+
+/*     double t_prev = trajectory_time_[idx_prev]; */
+/*     double t_next = trajectory_time_[idx_next]; */
+/*     double alpha = (target_time - t_prev) / (t_next - t_prev); */
+
+/*     auto state_prev = full_trajectory_path_[idx_prev]; */
+/*     auto state_next = full_trajectory_path_[idx_next]; */
+    
+/*     laser_msgs::msg::ReferenceState interp_state; */
+
+/*     // 1. Copia as flags booleanas (não faz sentido interpolar booleanos) */
+/*     interp_state.use_position = state_prev.use_position; */
+/*     interp_state.use_orientation = state_prev.use_orientation; */
+/*     interp_state.use_linear_velocity = state_prev.use_linear_velocity; */
+/*     interp_state.use_angular_velocity = state_prev.use_angular_velocity; */
+/*     interp_state.use_individual_thrust = state_prev.use_individual_thrust; */
+
+/*     // 2. Interpolação de Posição (LERP) */
+/*     interp_state.pose.position.x = state_prev.pose.position.x + alpha * (state_next.pose.position.x - state_prev.pose.position.x); */
+/*     interp_state.pose.position.y = state_prev.pose.position.y + alpha * (state_next.pose.position.y - state_prev.pose.position.y); */
+/*     interp_state.pose.position.z = state_prev.pose.position.z + alpha * (state_next.pose.position.z - state_prev.pose.position.z); */
+
+/*     // 3. Interpolação de Orientação (NLERP com Shortest Path) */
+/*     double q_dot = state_prev.pose.orientation.w * state_next.pose.orientation.w + */
+/*                    state_prev.pose.orientation.x * state_next.pose.orientation.x + */
+/*                    state_prev.pose.orientation.y * state_next.pose.orientation.y + */
+/*                    state_prev.pose.orientation.z * state_next.pose.orientation.z; */
+
+/*     double q_w = state_next.pose.orientation.w; */
+/*     double q_x = state_next.pose.orientation.x; */
+/*     double q_y = state_next.pose.orientation.y; */
+/*     double q_z = state_next.pose.orientation.z; */
+
+/*     // Se o produto escalar for negativo, os quaternions estão em hemisférios opostos. */
+/*     // Invertemos o quaternion de destino para forçar a interpolação pelo caminho mais curto. */
+/*     if (q_dot < 0.0) { */
+/*       q_w = -q_w; q_x = -q_x; q_y = -q_y; q_z = -q_z; */
+/*     } */
+
+/*     interp_state.pose.orientation.w = state_prev.pose.orientation.w + alpha * (q_w - state_prev.pose.orientation.w); */
+/*     interp_state.pose.orientation.x = state_prev.pose.orientation.x + alpha * (q_x - state_prev.pose.orientation.x); */
+/*     interp_state.pose.orientation.y = state_prev.pose.orientation.y + alpha * (q_y - state_prev.pose.orientation.y); */
+/*     interp_state.pose.orientation.z = state_prev.pose.orientation.z + alpha * (q_z - state_prev.pose.orientation.z); */
+
+/*     // Normaliza o quaternion resultante */
+/*     double norm = std::sqrt(interp_state.pose.orientation.w * interp_state.pose.orientation.w + */
+/*                             interp_state.pose.orientation.x * interp_state.pose.orientation.x + */
+/*                             interp_state.pose.orientation.y * interp_state.pose.orientation.y + */
+/*                             interp_state.pose.orientation.z * interp_state.pose.orientation.z); */
+    
+/*     interp_state.pose.orientation.w /= norm; */
+/*     interp_state.pose.orientation.x /= norm; */
+/*     interp_state.pose.orientation.y /= norm; */
+/*     interp_state.pose.orientation.z /= norm; */
+
+/*     // 4. Interpolação de Velocidade Linear (LERP) */
+/*     interp_state.twist.linear.x = state_prev.twist.linear.x + alpha * (state_next.twist.linear.x - state_prev.twist.linear.x); */
+/*     interp_state.twist.linear.y = state_prev.twist.linear.y + alpha * (state_next.twist.linear.y - state_prev.twist.linear.y); */
+/*     interp_state.twist.linear.z = state_prev.twist.linear.z + alpha * (state_next.twist.linear.z - state_prev.twist.linear.z); */
+
+/*     // 5. Interpolação de Velocidade Angular (LERP) */
+/*     interp_state.twist.angular.x = state_prev.twist.angular.x + alpha * (state_next.twist.angular.x - state_prev.twist.angular.x); */
+/*     interp_state.twist.angular.y = state_prev.twist.angular.y + alpha * (state_next.twist.angular.y - state_prev.twist.angular.y); */
+/*     interp_state.twist.angular.z = state_prev.twist.angular.z + alpha * (state_next.twist.angular.z - state_prev.twist.angular.z); */
+
+/*     // 6. Interpolação de Thrust Individual (Array) */
+/*     interp_state.individual_thrust.unit_of_measurement = state_prev.individual_thrust.unit_of_measurement; */
+    
+/*     // Confirma se os vetores de thrust têm o mesmo tamanho para evitar SegFault */
+/*     if (state_prev.individual_thrust.data.size() == state_next.individual_thrust.data.size()) { */
+/*       for (size_t i = 0; i < state_prev.individual_thrust.data.size(); ++i) { */
+/*         double interpolated_thrust = state_prev.individual_thrust.data[i] + alpha * (state_next.individual_thrust.data[i] - state_prev.individual_thrust.data[i]); */
+/*         interp_state.individual_thrust.data.push_back(interpolated_thrust); */
+/*       } */
+/*     } else { */
+/*       // Fallback: se houver descasamento, copia do anterior */
+/*       interp_state.individual_thrust.data = state_prev.individual_thrust.data; */ 
+/*     } */
+
+/*     sampled_trajectory.push_back(interp_state); */
+/*   } */
+
+/*   // Descarte de memória atrasada (mantém 1 segundo de histórico por segurança) */
+/*   while (trajectory_time_.size() > 2 && trajectory_time_[1] < elapsed_time - 1.0) { */
+/*     trajectory_time_.erase(trajectory_time_.begin()); */
+/*     full_trajectory_path_.erase(full_trajectory_path_.begin()); */
+/*   } */
+
+/*   return sampled_trajectory; */
+/* } */
 //}
 
 /* isHover() //{ */

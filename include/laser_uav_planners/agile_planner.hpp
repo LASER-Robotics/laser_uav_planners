@@ -52,7 +52,7 @@ public:
   bool generateTrajectory(nav_msgs::msg::Odometry start_waypoint, laser_msgs::msg::PoseWithHeading end_waypoint, float speed, bool use_speed);
   bool generateTrajectory(nav_msgs::msg::Odometry start_waypoint, std::vector<laser_msgs::msg::PoseWithHeading> waypoints, float speed);
 
-  std::vector<laser_msgs::msg::ReferenceState> getTrajectory(int qty_points);
+  std::vector<laser_msgs::msg::ReferenceState> getTrajectory(int qty_points, double);
 
   bool isHover();
   void setMass(double mass);
@@ -64,11 +64,21 @@ private:
 
   int                                          total_waypoints_;
   int                                          current_waypoint_;
+  std::vector<pmm::Scalar>                          trajectory_time_;
   std::vector<laser_msgs::msg::ReferenceState> full_trajectory_path_;
   pmm_t                                        pmm_trajectory_capsule_;
 
   double          mass_;
   Eigen::Matrix3d inertia_matrix_;
   Eigen::MatrixXd G1_;
+  double current_anchor_time_ = -1.0; // -1 indica que a âncora precisa ser inicializada
+
+public:
+  // Chame essa função no callback do tópico que recebe a nova rota do LUS/PMM
+  void resetPlannerTime();
+
+private:
+  bool is_first_call_ = true;
+  double start_sim_time_ = 0.0;
 };
 }  // namespace laser_uav_planners
