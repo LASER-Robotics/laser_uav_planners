@@ -472,6 +472,128 @@ void AgilePlanner::resetPlannerTime() {
   is_first_call_ = true;
 }
 
+/* std::vector<laser_msgs::msg::ReferenceState> AgilePlanner::getTrajectory(int qty_points, double current_ros_time) { */
+/*   std::vector<laser_msgs::msg::ReferenceState> sampled_trajectory; */
+
+/*   if (full_trajectory_path_.empty() || trajectory_time_.empty()) { */
+/*     return std::vector<laser_msgs::msg::ReferenceState>(qty_points, laser_msgs::msg::ReferenceState()); */
+/*   } */
+
+/*   // --- A MÁGICA DO TEMPO ZERO --- */
+/*   if (is_first_call_) { */
+/*     // Na primeiríssima vez que o NMPC pedir a referência, nós cravamos */
+/*     // o relógio da missão usando o tempo exato desse milissegundo. */
+/*     start_sim_time_ = current_ros_time; */
+/*     is_first_call_ = false; */
+/*   } */
+
+/*   // O tempo decorrido agora é calculado internamente. */
+/*   // Na primeira chamada, elapsed_time será matematicamente = 0.0 */
+/*   double elapsed_time = current_ros_time - start_sim_time_; */
+/*   // ------------------------------ */
+
+/*   double dt = 0.05; */
+/*   double delay_compensation = 0.05; // Opcional: Lookahead para compensar o solver */
+
+/*   for (int k = 0; k < qty_points; ++k) { */
+/*     // Na primeira chamada (elapsed_time = 0), o alvo do NMPC no nó k=0 */ 
+/*     // será exatamente o tempo 0.0 da trajetória (+ o lookahead se usar). */
+/*     double target_time = elapsed_time + delay_compensation + (k * dt); */
+
+/*     auto it = std::lower_bound(trajectory_time_.begin(), trajectory_time_.end(), target_time); */
+
+/*     // Condição: Antes do início (Segurança) */
+/*     if (it == trajectory_time_.begin()) { */
+/*       sampled_trajectory.push_back(full_trajectory_path_.front()); */
+/*       continue; */
+/*     } */
+
+/*     // Condição: Fim da trajetória (Mantém Hover final) */
+/*     if (it == trajectory_time_.end()) { */
+/*       sampled_trajectory.push_back(full_trajectory_path_.back()); */
+/*       continue; */
+/*     } */
+
+/*     // Interpolação Matemática */
+/*     int idx_next = std::distance(trajectory_time_.begin(), it); */
+/*     int idx_prev = idx_next - 1; */
+
+/*     double t_prev = trajectory_time_[idx_prev]; */
+/*     double t_next = trajectory_time_[idx_next]; */
+/*     double alpha = (target_time - t_prev) / (t_next - t_prev); */
+
+/*     auto state_prev = full_trajectory_path_[idx_prev]; */
+/*     auto state_next = full_trajectory_path_[idx_next]; */
+    
+/*     laser_msgs::msg::ReferenceState interp_state; */
+/*     interp_state.use_position = state_prev.use_position; */
+/*     interp_state.use_orientation = state_prev.use_orientation; */
+/*     interp_state.use_linear_velocity = state_prev.use_linear_velocity; */
+/*     interp_state.use_angular_velocity = state_prev.use_angular_velocity; */
+/*     interp_state.use_individual_thrust = state_prev.use_individual_thrust; */
+
+/*     // Posição */
+/*     interp_state.pose.position.x = state_prev.pose.position.x + alpha * (state_next.pose.position.x - state_prev.pose.position.x); */
+/*     interp_state.pose.position.y = state_prev.pose.position.y + alpha * (state_next.pose.position.y - state_prev.pose.position.y); */
+/*     interp_state.pose.position.z = state_prev.pose.position.z + alpha * (state_next.pose.position.z - state_prev.pose.position.z); */
+
+/*     // Orientação (NLERP com Shortest Path) */
+/*     double q_dot = state_prev.pose.orientation.w * state_next.pose.orientation.w + */
+/*                    state_prev.pose.orientation.x * state_next.pose.orientation.x + */
+/*                    state_prev.pose.orientation.y * state_next.pose.orientation.y + */
+/*                    state_prev.pose.orientation.z * state_next.pose.orientation.z; */
+
+/*     double q_w = state_next.pose.orientation.w; */
+/*     double q_x = state_next.pose.orientation.x; */
+/*     double q_y = state_next.pose.orientation.y; */
+/*     double q_z = state_next.pose.orientation.z; */
+
+/*     if (q_dot < 0.0) { q_w = -q_w; q_x = -q_x; q_y = -q_y; q_z = -q_z; } */
+
+/*     interp_state.pose.orientation.w = state_prev.pose.orientation.w + alpha * (q_w - state_prev.pose.orientation.w); */
+/*     interp_state.pose.orientation.x = state_prev.pose.orientation.x + alpha * (q_x - state_prev.pose.orientation.x); */
+/*     interp_state.pose.orientation.y = state_prev.pose.orientation.y + alpha * (q_y - state_prev.pose.orientation.y); */
+/*     interp_state.pose.orientation.z = state_prev.pose.orientation.z + alpha * (q_z - state_prev.pose.orientation.z); */
+
+/*     double norm = std::sqrt(interp_state.pose.orientation.w * interp_state.pose.orientation.w + */
+/*                             interp_state.pose.orientation.x * interp_state.pose.orientation.x + */
+/*                             interp_state.pose.orientation.y * interp_state.pose.orientation.y + */
+/*                             interp_state.pose.orientation.z * interp_state.pose.orientation.z); */
+    
+/*     interp_state.pose.orientation.w /= norm; interp_state.pose.orientation.x /= norm; */
+/*     interp_state.pose.orientation.y /= norm; interp_state.pose.orientation.z /= norm; */
+
+/*     // Twist Linear e Angular */
+/*     interp_state.twist.linear.x = state_prev.twist.linear.x + alpha * (state_next.twist.linear.x - state_prev.twist.linear.x); */
+/*     interp_state.twist.linear.y = state_prev.twist.linear.y + alpha * (state_next.twist.linear.y - state_prev.twist.linear.y); */
+/*     interp_state.twist.linear.z = state_prev.twist.linear.z + alpha * (state_next.twist.linear.z - state_prev.twist.linear.z); */
+
+/*     interp_state.twist.angular.x = state_prev.twist.angular.x + alpha * (state_next.twist.angular.x - state_prev.twist.angular.x); */
+/*     interp_state.twist.angular.y = state_prev.twist.angular.y + alpha * (state_next.twist.angular.y - state_prev.twist.angular.y); */
+/*     interp_state.twist.angular.z = state_prev.twist.angular.z + alpha * (state_next.twist.angular.z - state_prev.twist.angular.z); */
+
+/*     // Thrust Individual */
+/*     interp_state.individual_thrust.unit_of_measurement = state_prev.individual_thrust.unit_of_measurement; */
+/*     if (state_prev.individual_thrust.data.size() == state_next.individual_thrust.data.size()) { */
+/*       for (size_t i = 0; i < state_prev.individual_thrust.data.size(); ++i) { */
+/*         double interpolated_thrust = state_prev.individual_thrust.data[i] + alpha * (state_next.individual_thrust.data[i] - state_prev.individual_thrust.data[i]); */
+/*         interp_state.individual_thrust.data.push_back(interpolated_thrust); */
+/*       } */
+/*     } else { */
+/*       interp_state.individual_thrust.data = state_prev.individual_thrust.data; */ 
+/*     } */
+
+/*     sampled_trajectory.push_back(interp_state); */
+/*   } */
+
+/*   // Descarte Lazy de Memória */
+/*   while (trajectory_time_.size() > 2 && trajectory_time_[1] < elapsed_time - 1.0) { */
+/*     trajectory_time_.erase(trajectory_time_.begin()); */
+/*     full_trajectory_path_.erase(full_trajectory_path_.begin()); */
+/*   } */
+
+/*   return sampled_trajectory; */
+/* } */
 std::vector<laser_msgs::msg::ReferenceState> AgilePlanner::getTrajectory(int qty_points, double current_ros_time) {
   std::vector<laser_msgs::msg::ReferenceState> sampled_trajectory;
 
@@ -481,24 +603,21 @@ std::vector<laser_msgs::msg::ReferenceState> AgilePlanner::getTrajectory(int qty
 
   // --- A MÁGICA DO TEMPO ZERO ---
   if (is_first_call_) {
-    // Na primeiríssima vez que o NMPC pedir a referência, nós cravamos
-    // o relógio da missão usando o tempo exato desse milissegundo.
+    // Na primeiríssima chamada, cravamos a âncora de tempo.
     start_sim_time_ = current_ros_time;
     is_first_call_ = false;
   }
 
-  // O tempo decorrido agora é calculado internamente.
-  // Na primeira chamada, elapsed_time será matematicamente = 0.0
+  // Na primeira chamada, elapsed_time será exatamente 0.0
+  // Nas chamadas seguintes, ele deslizará organicamente (ex: 0.012, 0.024...)
   double elapsed_time = current_ros_time - start_sim_time_;
-  // ------------------------------
-
+  
   double dt = 0.05;
-  double delay_compensation = 0.05; // Opcional: Lookahead para compensar o solver
 
   for (int k = 0; k < qty_points; ++k) {
-    // Na primeira chamada (elapsed_time = 0), o alvo do NMPC no nó k=0 
-    // será exatamente o tempo 0.0 da trajetória (+ o lookahead se usar).
-    double target_time = elapsed_time + delay_compensation + (k * dt);
+    // O alvo do NMPC agora é o tempo percorrido exato + os passos do horizonte.
+    // Quando elapsed_time for 0.0 e k for 0, target_time será cravado em 0.0!
+    double target_time = elapsed_time + (k * dt);
 
     auto it = std::lower_bound(trajectory_time_.begin(), trajectory_time_.end(), target_time);
 
@@ -514,7 +633,7 @@ std::vector<laser_msgs::msg::ReferenceState> AgilePlanner::getTrajectory(int qty
       continue;
     }
 
-    // Interpolação Matemática
+    // Interpolação Matemática Contínua
     int idx_next = std::distance(trajectory_time_.begin(), it);
     int idx_prev = idx_next - 1;
 
@@ -532,12 +651,12 @@ std::vector<laser_msgs::msg::ReferenceState> AgilePlanner::getTrajectory(int qty
     interp_state.use_angular_velocity = state_prev.use_angular_velocity;
     interp_state.use_individual_thrust = state_prev.use_individual_thrust;
 
-    // Posição
+    // --- Posição ---
     interp_state.pose.position.x = state_prev.pose.position.x + alpha * (state_next.pose.position.x - state_prev.pose.position.x);
     interp_state.pose.position.y = state_prev.pose.position.y + alpha * (state_next.pose.position.y - state_prev.pose.position.y);
     interp_state.pose.position.z = state_prev.pose.position.z + alpha * (state_next.pose.position.z - state_prev.pose.position.z);
 
-    // Orientação (NLERP com Shortest Path)
+    // --- Orientação (NLERP com Shortest Path) ---
     double q_dot = state_prev.pose.orientation.w * state_next.pose.orientation.w +
                    state_prev.pose.orientation.x * state_next.pose.orientation.x +
                    state_prev.pose.orientation.y * state_next.pose.orientation.y +
@@ -560,10 +679,12 @@ std::vector<laser_msgs::msg::ReferenceState> AgilePlanner::getTrajectory(int qty
                             interp_state.pose.orientation.y * interp_state.pose.orientation.y +
                             interp_state.pose.orientation.z * interp_state.pose.orientation.z);
     
-    interp_state.pose.orientation.w /= norm; interp_state.pose.orientation.x /= norm;
-    interp_state.pose.orientation.y /= norm; interp_state.pose.orientation.z /= norm;
+    interp_state.pose.orientation.w /= norm; 
+    interp_state.pose.orientation.x /= norm;
+    interp_state.pose.orientation.y /= norm; 
+    interp_state.pose.orientation.z /= norm;
 
-    // Twist Linear e Angular
+    // --- Twist Linear e Angular ---
     interp_state.twist.linear.x = state_prev.twist.linear.x + alpha * (state_next.twist.linear.x - state_prev.twist.linear.x);
     interp_state.twist.linear.y = state_prev.twist.linear.y + alpha * (state_next.twist.linear.y - state_prev.twist.linear.y);
     interp_state.twist.linear.z = state_prev.twist.linear.z + alpha * (state_next.twist.linear.z - state_prev.twist.linear.z);
@@ -572,7 +693,7 @@ std::vector<laser_msgs::msg::ReferenceState> AgilePlanner::getTrajectory(int qty
     interp_state.twist.angular.y = state_prev.twist.angular.y + alpha * (state_next.twist.angular.y - state_prev.twist.angular.y);
     interp_state.twist.angular.z = state_prev.twist.angular.z + alpha * (state_next.twist.angular.z - state_prev.twist.angular.z);
 
-    // Thrust Individual
+    // --- Thrust Individual ---
     interp_state.individual_thrust.unit_of_measurement = state_prev.individual_thrust.unit_of_measurement;
     if (state_prev.individual_thrust.data.size() == state_next.individual_thrust.data.size()) {
       for (size_t i = 0; i < state_prev.individual_thrust.data.size(); ++i) {
@@ -586,7 +707,7 @@ std::vector<laser_msgs::msg::ReferenceState> AgilePlanner::getTrajectory(int qty
     sampled_trajectory.push_back(interp_state);
   }
 
-  // Descarte Lazy de Memória
+  // Descarte Lazy de Memória: Apaga apenas o que já passou há mais de 1 segundo
   while (trajectory_time_.size() > 2 && trajectory_time_[1] < elapsed_time - 1.0) {
     trajectory_time_.erase(trajectory_time_.begin());
     full_trajectory_path_.erase(full_trajectory_path_.begin());
