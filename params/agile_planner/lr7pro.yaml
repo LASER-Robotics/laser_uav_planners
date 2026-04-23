@@ -6,7 +6,7 @@
         max_accel: 30.0 
 
         # This is the maximum speed
-        max_vel: 20.0
+        max_vel: 28.0
 
         default_vel: 1.0
 
@@ -30,4 +30,4 @@
 
       time:
         dt_precision: 0.001
-        sampling_step: 0.0100 # DON'T CHANGE
+        sampling_step: 0.001 # DON'T CHANGE

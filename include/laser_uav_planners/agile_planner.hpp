@@ -60,25 +60,27 @@ public:
 private:
   Eigen::Matrix3d generateRotationMatrix(Eigen::Vector3d& acceleration);
   Eigen::VectorXd generateIndividualThrust(Eigen::Vector3d& acceleration, Eigen::Vector3d& current_omega);
-  void            processImpulse(int window);
+  void            processAngularSpeedImpulse(int window);
+  void            processThrustImpulse(int window);
 
   int                                          total_waypoints_;
   int                                          current_waypoint_;
-  std::vector<pmm::Scalar>                          trajectory_time_;
+  std::vector<pmm::Scalar>                     trajectory_time_;
   std::vector<laser_msgs::msg::ReferenceState> full_trajectory_path_;
   pmm_t                                        pmm_trajectory_capsule_;
 
   double          mass_;
   Eigen::Matrix3d inertia_matrix_;
   Eigen::MatrixXd G1_;
-  double current_anchor_time_ = -1.0; // -1 indica que a âncora precisa ser inicializada
+  double          current_anchor_time_ = -1.0;  // -1 indica que a âncora precisa ser inicializada
 
 public:
   // Chame essa função no callback do tópico que recebe a nova rota do LUS/PMM
   void resetPlannerTime();
 
 private:
-  bool is_first_call_ = true;
+  bool   is_first_call_  = true;
   double start_sim_time_ = 0.0;
+  bool is_hover_ = false;
 };
 }  // namespace laser_uav_planners
