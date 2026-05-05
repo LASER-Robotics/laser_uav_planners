@@ -11,103 +11,41 @@ AgilePlanner::AgilePlanner() {
 AgilePlanner::AgilePlanner(multirotor_t multirotor_params, pmm_t pmm_params, double controller_dt) {
   pmm_trajectory_capsule_ = pmm_params;
 
-  mass_           = multirotor_params.mass;
-  G1_             = multirotor_params.G1;
-  inertia_matrix_ = multirotor_params.inertia_matrix;
+  mass_ = multirotor_params.mass;
+  G1_   = multirotor_params.G1.inverse();
 
   controller_dt_ = controller_dt;
 }
 //}
 
-/* generateRotationMatrix() //{ */
-Eigen::Matrix3d AgilePlanner::generateRotationMatrix(Eigen::Vector3d& acceleration) {
-  Eigen::Vector3d       g(0.0, 0.0, -9.81);
-  const Eigen::Vector3d thrust = mass_ * (acceleration - g);
+/* getAttitudeReference() //{ */
+Eigen::Quaterniond AgilePlanner::getAttitudeReference(Eigen::Vector3d& acceleration, double yaw) {
+  Eigen::Vector3d thrust_vec = acceleration - gravity;
+  Eigen::Vector3d z_b;
 
-  const Eigen::Vector3d z_b_des = thrust.normalized();
-
-  const Eigen::Vector3d x_c(1.0, 0.0, 0.0);
-
-  const Eigen::Vector3d y_b_des = z_b_des.cross(x_c).normalized();
-  const Eigen::Vector3d x_b_des = y_b_des.cross(z_b_des);
-
-  Eigen::Matrix3d R_ref;
-  R_ref.col(0) = x_b_des;
-  R_ref.col(1) = y_b_des;
-  R_ref.col(2) = z_b_des;
-
-  return R_ref;
-}
-//}
-
-/* generateIndividualThrust() //{ */
-Eigen::VectorXd AgilePlanner::generateIndividualThrust(Eigen::Vector3d& acceleration, Eigen::Vector3d& current_omega) {
-  Eigen::Vector3d g(0.0, 0.0, -9.81);
-  Eigen::Vector3d thrust       = mass_ * (acceleration - g);
-  double          total_thrust = thrust.norm();
-
-  Eigen::Vector3d torque = current_omega.cross(inertia_matrix_ * current_omega);
-
-  Eigen::Vector4d wrench;
-  wrench << total_thrust, torque;
-
-  return G1_.inverse() * wrench;
-}
-//}
-
-/* processAngularSpeedImpulse() //{ */
-void AgilePlanner::processAngularSpeedImpulse(int window) {
-  std::vector<laser_msgs::msg::ReferenceState> aux = full_trajectory_path_;
-  int                                          n   = aux.size();
-
-  for (int i = 1; i < n - 1; ++i) {
-    int start = std::max(0 + 1, i - window / 2);
-    int end   = std::min(n - 1, i + window / 2 + 1);
-
-    double sum_angular_velocity_x =
-        std::accumulate(aux.begin() + start, aux.begin() + end, 0.0, [](double sum, const auto& msg) { return sum + msg.twist.angular.x; });
-
-    double sum_angular_velocity_y =
-        std::accumulate(aux.begin() + start, aux.begin() + end, 0.0, [](double sum, const auto& msg) { return sum + msg.twist.angular.y; });
-
-    double sum_angular_velocity_z =
-        std::accumulate(aux.begin() + start, aux.begin() + end, 0.0, [](double sum, const auto& msg) { return sum + msg.twist.angular.z; });
-
-    full_trajectory_path_[i].twist.angular.x = sum_angular_velocity_x / (end - start);
-    full_trajectory_path_[i].twist.angular.y = sum_angular_velocity_y / (end - start);
-    full_trajectory_path_[i].twist.angular.z = sum_angular_velocity_z / (end - start);
+  if (thrust_vec.norm() < 1e-4) {
+    z_b = Eigen::Vector3d(0.0, 0.0, 1.0);
+  } else {
+    z_b = thrust_vec.normalized();
   }
-}
-//}
 
-/* processThrustImpulse() //{ */
-void AgilePlanner::processThrustImpulse(int window) {
-  std::vector<laser_msgs::msg::ReferenceState> aux = full_trajectory_path_;
-  int                                          n   = aux.size();
+  Eigen::Vector3d y_c(-std::sin(yaw), std::cos(yaw), 0.0);
+  Eigen::Vector3d x_b;
 
-  for (int i = 1; i < n - 1; ++i) {
-    int start = std::max(0 + 1, i - window / 2);
-    int end   = std::min(n - 1, i + window / 2 + 1);
-
-    /* double sum_angular_velocity_x = */
-    /*     std::accumulate(aux.begin() + start, aux.begin() + end, 0.0, [](double sum, const auto& msg) { return sum + msg.twist.angular.x; }); */
-
-    /* double sum_angular_velocity_y = */
-    /*     std::accumulate(aux.begin() + start, aux.begin() + end, 0.0, [](double sum, const auto& msg) { return sum + msg.twist.angular.y; }); */
-
-    /* double sum_angular_velocity_z = */
-    /*     std::accumulate(aux.begin() + start, aux.begin() + end, 0.0, [](double sum, const auto& msg) { return sum + msg.twist.angular.z; }); */
-
-    /* full_trajectory_path_[i].twist.angular.x = sum_angular_velocity_x / (end - start); */
-    /* full_trajectory_path_[i].twist.angular.y = sum_angular_velocity_y / (end - start); */
-    /* full_trajectory_path_[i].twist.angular.z = sum_angular_velocity_z / (end - start); */
-
-    for (auto j = 0; j < (int)aux[i].individual_thrust.data.size(); j++) {
-      double sum_individual_thrust =
-          std::accumulate(aux.begin() + start, aux.begin() + end, 0.0, [&](double sum, const auto& msg) { return sum + msg.individual_thrust.data[j]; });
-      full_trajectory_path_[i].individual_thrust.data[j] = sum_individual_thrust / (end - start);
-    }
+  if (std::abs(z_b.dot(y_c)) > 0.99) {
+    x_b = Eigen::Vector3d(std::cos(yaw), std::sin(yaw), 0.0);
+  } else {
+    x_b = y_c.cross(z_b).normalized();
   }
+
+  Eigen::Vector3d y_b = z_b.cross(x_b).normalized();
+
+  Eigen::Matrix3d R;
+  R.col(0) = x_b;
+  R.col(1) = y_b;
+  R.col(2) = z_b;
+
+  return Eigen::Quaterniond(R);
 }
 //}
 
@@ -165,8 +103,6 @@ void AgilePlanner::generateTrajectory(nav_msgs::msg::Odometry start_waypoint, la
 
   std::tie(trajectory_time_, p_s, v_s, a_s) = mp_tr.get_sampled_trajectory(pmm_trajectory_capsule_.sampling_step);
 
-  Eigen::Vector3d last_omega(0.0, 0.0, 0.0);
-  Eigen::Vector3d current_omega(0.0, 0.0, 0.0);
   for (auto i = 0; i < (int)trajectory_time_.size(); i++) {
     laser_msgs::msg::ReferenceState ref;
 
@@ -180,78 +116,30 @@ void AgilePlanner::generateTrajectory(nav_msgs::msg::Odometry start_waypoint, la
     ref.twist.linear.z      = v_s[i][2];
     ref.use_linear_velocity = true;
 
-    // Fill all states reference (adjust for aproximate full model)
-    if (i > 0 && i < (int)trajectory_time_.size() - 1) {
-      Eigen::Vector3d acceleration;
-      acceleration << a_s[i][0], a_s[i][1], a_s[i][2];
-      Eigen::Vector3d last_acceleration;
-      last_acceleration << a_s[i - 1][0], a_s[i - 1][1], a_s[i - 1][2];
-
-      Eigen::Matrix3d rotation_matrix      = generateRotationMatrix(acceleration);
-      Eigen::Matrix3d last_rotation_matrix = generateRotationMatrix(last_acceleration);
-
-      Eigen::Quaterniond q   = Eigen::Quaterniond(Eigen::AngleAxisd(end_waypoint.heading, Eigen::Vector3d(0.0, 0.0, 1.0))).normalized();
-      ref.pose.orientation.w = q.w();
-      ref.pose.orientation.x = q.x();
-      ref.pose.orientation.y = q.y();
-      ref.pose.orientation.z = q.z();
-      ref.use_orientation    = true;
-
-      Eigen::Matrix3d dot_rotation_matrix = (rotation_matrix - last_rotation_matrix) / pmm_trajectory_capsule_.sampling_step;
-      Eigen::Matrix3d s_matrix            = rotation_matrix.transpose() * dot_rotation_matrix;
-
-      current_omega(0) = ref.twist.angular.x = s_matrix(2, 1);
-      current_omega(1) = ref.twist.angular.y = s_matrix(0, 2);
-      current_omega(2) = ref.twist.angular.z = s_matrix(1, 0);
-      ref.use_angular_velocity               = true;
-
-      Eigen::VectorXd individual_thrust = generateIndividualThrust(acceleration, current_omega);
-      ref.individual_thrust.data        = std::vector<double>(individual_thrust.data(), individual_thrust.data() + individual_thrust.size());
-      ref.use_individual_thrust         = true;
-
-      last_omega = current_omega;
+    Eigen::Vector3d acceleration;
+    if (i + 1 == (int)trajectory_time_.size()) {
+      acceleration << 0.0, 0.0, 0.0;
     } else {
-      if (i != 0) {
-        Eigen::Quaterniond q   = Eigen::Quaterniond(Eigen::AngleAxisd(end_waypoint.heading, Eigen::Vector3d(0.0, 0.0, 1.0))).normalized();
-        ref.pose.orientation.w = q.w();
-        ref.pose.orientation.x = q.x();
-        ref.pose.orientation.y = q.y();
-        ref.pose.orientation.z = q.z();
-      } else {
-        ref.pose.orientation = start_waypoint.pose.pose.orientation;
-      }
-      ref.use_orientation = true;
-
-      ref.twist.angular.x      = 0.0;
-      ref.twist.angular.y      = 0.0;
-      ref.twist.angular.z      = 0.0;
-      ref.use_angular_velocity = true;
-
-      ref.individual_thrust.data = std::vector<double>(G1_.cols(), (mass_ * 9.81) / G1_.cols());
-      ref.use_individual_thrust  = true;
+      acceleration << a_s[i][0], a_s[i][1], a_s[i][2];
     }
+
+    Eigen::Quaterniond q   = getAttitudeReference(acceleration, end_waypoint.heading);
+    ref.pose.orientation.w = q.w();
+    ref.pose.orientation.x = q.x();
+    ref.pose.orientation.y = q.y();
+    ref.pose.orientation.z = q.z();
+    ref.use_orientation    = true;
+
+    ref.twist.angular.x      = 0.0;
+    ref.twist.angular.y      = 0.0;
+    ref.twist.angular.z      = 0.0;
+    ref.use_angular_velocity = true;
+
+    ref.individual_thrust.data = std::vector<double>(G1_.cols(), (mass_ * (acceleration - gravity).norm()) / G1_.cols());
+    ref.use_individual_thrust  = true;
 
     full_trajectory_path_.push_back(ref);
   }
-  processAngularSpeedImpulse(500);
-
-
-  for (auto i = 0; i < (int)trajectory_time_.size(); i++) {
-    if (i > 0 && i < (int)trajectory_time_.size() - 1) {
-      Eigen::Vector3d acceleration;
-      acceleration << a_s[i][0], a_s[i][1], a_s[i][2];
-
-      Eigen::Vector3d current_omega;
-      current_omega << full_trajectory_path_[i].twist.angular.x, full_trajectory_path_[i].twist.angular.y, full_trajectory_path_[i].twist.angular.z;
-
-      Eigen::VectorXd individual_thrust               = generateIndividualThrust(acceleration, current_omega);
-      full_trajectory_path_[i].individual_thrust.data = std::vector<double>(individual_thrust.data(), individual_thrust.data() + individual_thrust.size());
-    }
-  }
-
-  total_waypoints_ = trajectory_time_.size();
-
-  current_waypoint_ = 0;
 
   is_hover_         = false;
   take_anchor_time_ = true;
@@ -315,9 +203,7 @@ void AgilePlanner::generateTrajectory(nav_msgs::msg::Odometry start_waypoint, st
 
   std::tie(trajectory_time_, p_s, v_s, a_s) = mp_tr.get_sampled_trajectory(pmm_trajectory_capsule_.sampling_step);
 
-  int             j = 0;
-  Eigen::Vector3d last_omega(0.0, 0.0, 0.0);
-  Eigen::Vector3d current_omega(0.0, 0.0, 0.0);
+  int j = 0;
   for (auto i = 0; i < (int)trajectory_time_.size(); i++) {
     laser_msgs::msg::ReferenceState ref;
 
@@ -331,87 +217,34 @@ void AgilePlanner::generateTrajectory(nav_msgs::msg::Odometry start_waypoint, st
     ref.twist.linear.z      = v_s[i][2];
     ref.use_linear_velocity = true;
 
-    // Fill all states reference (adjust for aproximate full model)
-    if (i > 0 && i < (int)trajectory_time_.size() - 1) {
-      Eigen::Vector3d acceleration;
-      acceleration << a_s[i][0], a_s[i][1], a_s[i][2];
-      Eigen::Vector3d last_acceleration;
-      last_acceleration << a_s[i - 1][0], a_s[i - 1][1], a_s[i - 1][2];
-
-      Eigen::Matrix3d rotation_matrix      = generateRotationMatrix(acceleration);
-      Eigen::Matrix3d last_rotation_matrix = generateRotationMatrix(last_acceleration);
-
-      Eigen::Quaterniond q   = Eigen::Quaterniond(Eigen::AngleAxisd(waypoints[j].heading, Eigen::Vector3d(0.0, 0.0, 1.0))).normalized();
-      ref.pose.orientation.w = q.w();
-      ref.pose.orientation.x = q.x();
-      ref.pose.orientation.y = q.y();
-      ref.pose.orientation.z = q.z();
-      ref.use_orientation    = true;
-
-      if (sqrt(pow(waypoints[j].position.x - p_s[i][0], 2) + pow(waypoints[j].position.y - p_s[i][1], 2) + pow(waypoints[j].position.z - p_s[i][2], 2)) <=
-          0.1) {
-        j++;
-      }
-
-      Eigen::Matrix3d dot_rotation_matrix = (rotation_matrix - last_rotation_matrix) / pmm_trajectory_capsule_.sampling_step;
-      Eigen::Matrix3d s_matrix            = rotation_matrix.transpose() * dot_rotation_matrix;
-
-      current_omega(0) = ref.twist.angular.x = s_matrix(2, 1);
-      current_omega(1) = ref.twist.angular.y = s_matrix(0, 2);
-      current_omega(2) = ref.twist.angular.z = s_matrix(1, 0);
-      ref.use_angular_velocity               = true;
-
-      Eigen::VectorXd individual_thrust = generateIndividualThrust(acceleration, current_omega);
-      ref.individual_thrust.data        = std::vector<double>(individual_thrust.data(), individual_thrust.data() + individual_thrust.size());
-      ref.use_individual_thrust         = true;
-
-      last_omega = current_omega;
+    Eigen::Vector3d acceleration;
+    if (i + 1 == (int)trajectory_time_.size()) {
+      acceleration << 0.0, 0.0, 0.0;
     } else {
-      Eigen::Quaterniond q;
-      if (i == 0) {
-        q = Eigen::Quaterniond(Eigen::AngleAxisd(waypoints[j].heading, Eigen::Vector3d(0.0, 0.0, 1.0))).normalized();
-      } else {
-        q = Eigen::Quaterniond(Eigen::AngleAxisd(waypoints[j - 1].heading, Eigen::Vector3d(0.0, 0.0, 1.0))).normalized();
-      }
-
-      ref.pose.orientation.w = q.w();
-      ref.pose.orientation.x = q.x();
-      ref.pose.orientation.y = q.y();
-      ref.pose.orientation.z = q.z();
-      ref.use_orientation    = true;
-
-      ref.twist.angular.x      = 0.0;
-      ref.twist.angular.y      = 0.0;
-      ref.twist.angular.z      = 0.0;
-      ref.use_angular_velocity = true;
-
-      ref.individual_thrust.data = std::vector<double>(G1_.cols(), (mass_ * 9.81) / G1_.cols());
-      ref.use_individual_thrust  = true;
+      acceleration << a_s[i][0], a_s[i][1], a_s[i][2];
     }
+
+    Eigen::Quaterniond q   = getAttitudeReference(acceleration, waypoints[j].heading);
+    ref.pose.orientation.w = q.w();
+    ref.pose.orientation.x = q.x();
+    ref.pose.orientation.y = q.y();
+    ref.pose.orientation.z = q.z();
+    ref.use_orientation    = true;
+
+    if (sqrt(pow(waypoints[j].position.x - p_s[i][0], 2) + pow(waypoints[j].position.y - p_s[i][1], 2) + pow(waypoints[j].position.z - p_s[i][2], 2)) <= 0.1) {
+      j++;
+    }
+
+    ref.twist.angular.x      = 0.0;
+    ref.twist.angular.y      = 0.0;
+    ref.twist.angular.z      = 0.0;
+    ref.use_angular_velocity = true;
+
+    ref.individual_thrust.data = std::vector<double>(G1_.cols(), (mass_ * (acceleration - gravity).norm()) / G1_.cols());
+    ref.use_individual_thrust  = true;
 
     full_trajectory_path_.push_back(ref);
   }
-  processAngularSpeedImpulse(500);
-
-  for (auto i = 0; i < (int)trajectory_time_.size(); i++) {
-    if (i > 0 && i < (int)trajectory_time_.size() - 1) {
-      Eigen::Vector3d acceleration;
-      acceleration << a_s[i][0], a_s[i][1], a_s[i][2];
-
-      Eigen::Vector3d current_omega;
-      current_omega << full_trajectory_path_[i].twist.angular.x, full_trajectory_path_[i].twist.angular.y, full_trajectory_path_[i].twist.angular.z;
-
-      Eigen::VectorXd individual_thrust               = generateIndividualThrust(acceleration, current_omega);
-      full_trajectory_path_[i].individual_thrust.data = std::vector<double>(individual_thrust.data(), individual_thrust.data() + individual_thrust.size());
-    }
-  }
-  /* processThrustImpulse(200); */
-
-
-  total_waypoints_ = trajectory_time_.size();
-
-  current_waypoint_ = 0;
-  std::cout << "DONEEEEE" << std::endl << std::endl;
 
   is_hover_              = false;
   take_anchor_time_      = true;
@@ -426,7 +259,6 @@ std::vector<laser_msgs::msg::ReferenceState> AgilePlanner::getTrajectory(int qty
   std::vector<laser_msgs::msg::ReferenceState> sampled_trajectory;
 
   if (generating_trajectory_) {
-    std::cout << "HOVER WAITTTT" << std::endl << std::endl;
     return std::vector<laser_msgs::msg::ReferenceState>(qty_points, hover_wait_waypoint_);
   }
 

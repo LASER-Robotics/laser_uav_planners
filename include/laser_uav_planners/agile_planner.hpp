@@ -58,20 +58,16 @@ public:
   void setMass(double mass);
 
 private:
-  Eigen::Matrix3d generateRotationMatrix(Eigen::Vector3d& acceleration);
-  Eigen::VectorXd generateIndividualThrust(Eigen::Vector3d& acceleration, Eigen::Vector3d& current_omega);
-  void            processAngularSpeedImpulse(int window);
-  void            processThrustImpulse(int window);
+  Eigen::Quaterniond getAttitudeReference(Eigen::Vector3d& acceleration, double yaw);
 
-  int                                          total_waypoints_;
-  int                                          current_waypoint_;
   std::vector<pmm::Scalar>                     trajectory_time_;
   std::vector<laser_msgs::msg::ReferenceState> full_trajectory_path_;
   laser_msgs::msg::ReferenceState              hover_wait_waypoint_;
   pmm_t                                        pmm_trajectory_capsule_;
 
+  Eigen::Vector3d gravity{0.0, 0.0, -9.81};
+
   double          mass_;
-  Eigen::Matrix3d inertia_matrix_;
   Eigen::MatrixXd G1_;
   double          controller_dt_;
 
