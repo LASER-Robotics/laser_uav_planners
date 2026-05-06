@@ -49,8 +49,8 @@ public:
   AgilePlanner();
   AgilePlanner(multirotor_t multirotor_params, pmm_t pmm_params, double controller_dt);
 
-  void generateTrajectory(nav_msgs::msg::Odometry start_waypoint, laser_msgs::msg::PoseWithHeading end_waypoint, float speed, bool use_speed);
-  void generateTrajectory(nav_msgs::msg::Odometry start_waypoint, std::vector<laser_msgs::msg::PoseWithHeading> waypoints, float speed);
+  void generateTrajectory(laser_msgs::msg::ReferenceState start_waypoint, laser_msgs::msg::PoseWithHeading end_waypoint, float speed, bool use_speed);
+  void generateTrajectory(laser_msgs::msg::ReferenceState start_waypoint, std::vector<laser_msgs::msg::PoseWithHeading> waypoints, float speed);
 
   std::vector<laser_msgs::msg::ReferenceState> getTrajectory(int qty_points, double current_time);
 

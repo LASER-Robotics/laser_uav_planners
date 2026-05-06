@@ -50,7 +50,7 @@ Eigen::Quaterniond AgilePlanner::getAttitudeReference(Eigen::Vector3d& accelerat
 //}
 
 /* generateTrajectory() //{ */
-void AgilePlanner::generateTrajectory(nav_msgs::msg::Odometry start_waypoint, laser_msgs::msg::PoseWithHeading end_waypoint, float speed, bool use_speed) {
+void AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_waypoint, laser_msgs::msg::PoseWithHeading end_waypoint, float speed, bool use_speed) {
   generating_trajectory_ = true;
   full_trajectory_path_.clear();
   full_trajectory_path_.shrink_to_fit();
@@ -62,9 +62,9 @@ void AgilePlanner::generateTrajectory(nav_msgs::msg::Odometry start_waypoint, la
   pmm::Vector<3>              end_velocity;
   std::vector<pmm::Vector<3>> waypoints;
 
-  start_position[0] = start_waypoint.pose.pose.position.x;
-  start_position[1] = start_waypoint.pose.pose.position.y;
-  start_position[2] = start_waypoint.pose.pose.position.z;
+  start_position[0] = start_waypoint.pose.position.x;
+  start_position[1] = start_waypoint.pose.position.y;
+  start_position[2] = start_waypoint.pose.position.z;
   start_velocity[0] = 0.0;
   start_velocity[1] = 0.0;
   start_velocity[2] = 0.0;
@@ -151,7 +151,7 @@ void AgilePlanner::generateTrajectory(nav_msgs::msg::Odometry start_waypoint, la
 //}
 
 /* generateTrajectory() //{ */
-void AgilePlanner::generateTrajectory(nav_msgs::msg::Odometry start_waypoint, std::vector<laser_msgs::msg::PoseWithHeading> waypoints, float speed) {
+void AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_waypoint, std::vector<laser_msgs::msg::PoseWithHeading> waypoints, float speed) {
   generating_trajectory_ = true;
   full_trajectory_path_.clear();
   full_trajectory_path_.shrink_to_fit();
@@ -161,9 +161,9 @@ void AgilePlanner::generateTrajectory(nav_msgs::msg::Odometry start_waypoint, st
   pmm::Vector<3>              end_velocity;
   std::vector<pmm::Vector<3>> waypoints_mp;
 
-  start_position[0] = start_waypoint.pose.pose.position.x;
-  start_position[1] = start_waypoint.pose.pose.position.y;
-  start_position[2] = start_waypoint.pose.pose.position.z;
+  start_position[0] = start_waypoint.pose.position.x;
+  start_position[1] = start_waypoint.pose.position.y;
+  start_position[2] = start_waypoint.pose.position.z;
   start_velocity[0] = 0.0;
   start_velocity[1] = 0.0;
   start_velocity[2] = 0.0;
