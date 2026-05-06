@@ -3,10 +3,10 @@
     agile_planner:
       multirotor_parameters:
         # This is a = F / M. F is maximum total thrust available
-        max_accel: 30.0 
+        max_accel: 25.0 
 
         # This is the maximum speed
-        max_vel: 28.0
+        max_vel: 20.0
 
         default_vel: 1.0
 
