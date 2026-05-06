@@ -255,7 +255,7 @@ void AgilePlanner::generateTrajectory(nav_msgs::msg::Odometry start_waypoint, st
 //}
 
 /* getTrajectory() //{ */
-std::vector<laser_msgs::msg::ReferenceState> AgilePlanner::getTrajectory(int qty_points, double current_ros_time) {
+std::vector<laser_msgs::msg::ReferenceState> AgilePlanner::getTrajectory(int qty_points, double current_time) {
   std::vector<laser_msgs::msg::ReferenceState> sampled_trajectory;
 
   if (generating_trajectory_) {
@@ -263,11 +263,11 @@ std::vector<laser_msgs::msg::ReferenceState> AgilePlanner::getTrajectory(int qty
   }
 
   if (take_anchor_time_) {
-    start_trajectory_time_ = current_ros_time;
+    start_trajectory_time_ = current_time;
     take_anchor_time_      = false;
   }
 
-  double elapsed_time = current_ros_time - start_trajectory_time_;
+  double elapsed_time = current_time - start_trajectory_time_;
 
   int count_hover = 0;
 
