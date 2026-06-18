@@ -50,7 +50,8 @@ Eigen::Quaterniond AgilePlanner::getAttitudeReference(Eigen::Vector3d& accelerat
 //}
 
 /* generateTrajectory() //{ */
-void AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_waypoint, laser_msgs::msg::PoseWithHeading end_waypoint, float speed, bool use_speed) {
+void AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_waypoint, laser_msgs::msg::PoseWithHeading end_waypoint, float speed,
+                                      bool use_speed) {
   generating_trajectory_ = true;
   full_trajectory_path_.clear();
   full_trajectory_path_.shrink_to_fit();
@@ -136,7 +137,7 @@ void AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_wayp
     ref.use_angular_velocity = true;
 
     ref.individual_thrust.data = std::vector<double>(G1_.cols(), (mass_ * (acceleration - gravity).norm()) / G1_.cols());
-    ref.use_individual_thrust  = true;
+    ref.use_individual_thrust  = false;
 
     full_trajectory_path_.push_back(ref);
   }
@@ -241,7 +242,7 @@ void AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_wayp
     ref.use_angular_velocity = true;
 
     ref.individual_thrust.data = std::vector<double>(G1_.cols(), (mass_ * (acceleration - gravity).norm()) / G1_.cols());
-    ref.use_individual_thrust  = true;
+    ref.use_individual_thrust  = false;
 
     full_trajectory_path_.push_back(ref);
   }
