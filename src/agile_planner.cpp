@@ -1,20 +1,15 @@
 #include <laser_uav_planners/agile_planner.hpp>
+#include <stdexcept>
 
 namespace laser_uav_planners
 {
-/* AgilePlanner() {default} //{ */
-AgilePlanner::AgilePlanner() {
-}
-//}
-
 /* AgilePlanner() //{ */
-AgilePlanner::AgilePlanner(multirotor_t multirotor_params, pmm_t pmm_params, double controller_dt) {
+AgilePlanner::AgilePlanner(multirotor_t multirotor_params, pmm_t pmm_params) {
   pmm_trajectory_capsule_ = pmm_params;
 
   mass_ = multirotor_params.mass;
   G1_   = multirotor_params.G1.inverse();
 
-  controller_dt_ = controller_dt;
 }
 //}
 
@@ -52,7 +47,6 @@ Eigen::Quaterniond AgilePlanner::getAttitudeReference(Eigen::Vector3d& accelerat
 /* generateTrajectory() //{ */
 void AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_waypoint, laser_msgs::msg::PoseWithHeading end_waypoint, float speed,
                                       bool use_speed) {
-  generating_trajectory_ = true;
   full_trajectory_path_.clear();
   full_trajectory_path_.shrink_to_fit();
 
@@ -66,9 +60,9 @@ void AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_wayp
   start_position[0] = start_waypoint.pose.position.x;
   start_position[1] = start_waypoint.pose.position.y;
   start_position[2] = start_waypoint.pose.position.z;
-  start_velocity[0] = 0.0;
-  start_velocity[1] = 0.0;
-  start_velocity[2] = 0.0;
+  start_velocity[0] = start_waypoint.use_linear_velocity ? start_waypoint.twist.linear.x : 0.0;
+  start_velocity[1] = start_waypoint.use_linear_velocity ? start_waypoint.twist.linear.y : 0.0;
+  start_velocity[2] = start_waypoint.use_linear_velocity ? start_waypoint.twist.linear.z : 0.0;
 
   end_position[0] = end_waypoint.position.x;
   end_position[1] = end_waypoint.position.y;
@@ -142,10 +136,6 @@ void AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_wayp
     full_trajectory_path_.push_back(ref);
   }
 
-  is_hover_         = false;
-  take_anchor_time_ = true;
-
-  generating_trajectory_ = false;
 
   return;
 }
@@ -153,7 +143,9 @@ void AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_wayp
 
 /* generateTrajectory() //{ */
 void AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_waypoint, std::vector<laser_msgs::msg::PoseWithHeading> waypoints, float speed) {
-  generating_trajectory_ = true;
+  if (waypoints.empty()) {
+    throw std::invalid_argument("PMM requires at least one waypoint");
+  }
   full_trajectory_path_.clear();
   full_trajectory_path_.shrink_to_fit();
 
@@ -165,9 +157,9 @@ void AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_wayp
   start_position[0] = start_waypoint.pose.position.x;
   start_position[1] = start_waypoint.pose.position.y;
   start_position[2] = start_waypoint.pose.position.z;
-  start_velocity[0] = 0.0;
-  start_velocity[1] = 0.0;
-  start_velocity[2] = 0.0;
+  start_velocity[0] = start_waypoint.use_linear_velocity ? start_waypoint.twist.linear.x : 0.0;
+  start_velocity[1] = start_waypoint.use_linear_velocity ? start_waypoint.twist.linear.y : 0.0;
+  start_velocity[2] = start_waypoint.use_linear_velocity ? start_waypoint.twist.linear.z : 0.0;
 
   end_velocity[0] = 0;
   end_velocity[1] = 0;
@@ -232,7 +224,8 @@ void AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_wayp
     ref.pose.orientation.z = q.z();
     ref.use_orientation    = true;
 
-    if (sqrt(pow(waypoints[j].position.x - p_s[i][0], 2) + pow(waypoints[j].position.y - p_s[i][1], 2) + pow(waypoints[j].position.z - p_s[i][2], 2)) <= 0.1) {
+    if (j + 1 < static_cast<int>(waypoints.size()) &&
+        sqrt(pow(waypoints[j].position.x - p_s[i][0], 2) + pow(waypoints[j].position.y - p_s[i][1], 2) + pow(waypoints[j].position.z - p_s[i][2], 2)) <= 0.1) {
       j++;
     }
 
@@ -247,137 +240,20 @@ void AgilePlanner::generateTrajectory(laser_msgs::msg::ReferenceState start_wayp
     full_trajectory_path_.push_back(ref);
   }
 
-  is_hover_              = false;
-  take_anchor_time_      = true;
-  generating_trajectory_ = false;
 
   return;
 }
 //}
 
-/* getTrajectory() //{ */
-std::vector<laser_msgs::msg::ReferenceState> AgilePlanner::getTrajectory(int qty_points, double current_time) {
-  std::vector<laser_msgs::msg::ReferenceState> sampled_trajectory;
-
-  if (generating_trajectory_) {
-    return std::vector<laser_msgs::msg::ReferenceState>(qty_points, hover_wait_waypoint_);
-  }
-
-  if (take_anchor_time_) {
-    start_trajectory_time_ = current_time;
-    take_anchor_time_      = false;
-  }
-
-  double elapsed_time = current_time - start_trajectory_time_;
-
-  int count_hover = 0;
-
-  for (int k = 0; k < qty_points; ++k) {
-    double target_time = elapsed_time + (k * controller_dt_);
-
-    auto it = std::lower_bound(trajectory_time_.begin(), trajectory_time_.end(), target_time);
-
-    if (it == trajectory_time_.begin()) {
-      sampled_trajectory.push_back(full_trajectory_path_.front());
-      continue;
-    }
-
-    if (it == trajectory_time_.end()) {
-      sampled_trajectory.push_back(full_trajectory_path_.back());
-      count_hover++;
-      continue;
-    }
-
-    int idx_next = std::distance(trajectory_time_.begin(), it);
-    int idx_prev = idx_next - 1;
-
-    double t_prev = trajectory_time_[idx_prev];
-    double t_next = trajectory_time_[idx_next];
-    double alpha  = (target_time - t_prev) / (t_next - t_prev);
-
-    auto state_prev = full_trajectory_path_[idx_prev];
-    auto state_next = full_trajectory_path_[idx_next];
-
-    laser_msgs::msg::ReferenceState interp_state;
-    interp_state.use_position          = state_prev.use_position;
-    interp_state.use_orientation       = state_prev.use_orientation;
-    interp_state.use_linear_velocity   = state_prev.use_linear_velocity;
-    interp_state.use_angular_velocity  = state_prev.use_angular_velocity;
-    interp_state.use_individual_thrust = state_prev.use_individual_thrust;
-
-    interp_state.pose.position.x = state_prev.pose.position.x + alpha * (state_next.pose.position.x - state_prev.pose.position.x);
-    interp_state.pose.position.y = state_prev.pose.position.y + alpha * (state_next.pose.position.y - state_prev.pose.position.y);
-    interp_state.pose.position.z = state_prev.pose.position.z + alpha * (state_next.pose.position.z - state_prev.pose.position.z);
-
-    double q_dot = state_prev.pose.orientation.w * state_next.pose.orientation.w + state_prev.pose.orientation.x * state_next.pose.orientation.x +
-                   state_prev.pose.orientation.y * state_next.pose.orientation.y + state_prev.pose.orientation.z * state_next.pose.orientation.z;
-
-    double q_w = state_next.pose.orientation.w;
-    double q_x = state_next.pose.orientation.x;
-    double q_y = state_next.pose.orientation.y;
-    double q_z = state_next.pose.orientation.z;
-
-    if (q_dot < 0.0) {
-      q_w = -q_w;
-      q_x = -q_x;
-      q_y = -q_y;
-      q_z = -q_z;
-    }
-
-    interp_state.pose.orientation.w = state_prev.pose.orientation.w + alpha * (q_w - state_prev.pose.orientation.w);
-    interp_state.pose.orientation.x = state_prev.pose.orientation.x + alpha * (q_x - state_prev.pose.orientation.x);
-    interp_state.pose.orientation.y = state_prev.pose.orientation.y + alpha * (q_y - state_prev.pose.orientation.y);
-    interp_state.pose.orientation.z = state_prev.pose.orientation.z + alpha * (q_z - state_prev.pose.orientation.z);
-
-    double norm =
-        std::sqrt(interp_state.pose.orientation.w * interp_state.pose.orientation.w + interp_state.pose.orientation.x * interp_state.pose.orientation.x +
-                  interp_state.pose.orientation.y * interp_state.pose.orientation.y + interp_state.pose.orientation.z * interp_state.pose.orientation.z);
-
-    interp_state.pose.orientation.w /= norm;
-    interp_state.pose.orientation.x /= norm;
-    interp_state.pose.orientation.y /= norm;
-    interp_state.pose.orientation.z /= norm;
-
-    interp_state.twist.linear.x = state_prev.twist.linear.x + alpha * (state_next.twist.linear.x - state_prev.twist.linear.x);
-    interp_state.twist.linear.y = state_prev.twist.linear.y + alpha * (state_next.twist.linear.y - state_prev.twist.linear.y);
-    interp_state.twist.linear.z = state_prev.twist.linear.z + alpha * (state_next.twist.linear.z - state_prev.twist.linear.z);
-
-    interp_state.twist.angular.x = state_prev.twist.angular.x + alpha * (state_next.twist.angular.x - state_prev.twist.angular.x);
-    interp_state.twist.angular.y = state_prev.twist.angular.y + alpha * (state_next.twist.angular.y - state_prev.twist.angular.y);
-    interp_state.twist.angular.z = state_prev.twist.angular.z + alpha * (state_next.twist.angular.z - state_prev.twist.angular.z);
-
-    interp_state.individual_thrust.unit_of_measurement = state_prev.individual_thrust.unit_of_measurement;
-    if (state_prev.individual_thrust.data.size() == state_next.individual_thrust.data.size()) {
-      for (size_t i = 0; i < state_prev.individual_thrust.data.size(); ++i) {
-        double interpolated_thrust =
-            state_prev.individual_thrust.data[i] + alpha * (state_next.individual_thrust.data[i] - state_prev.individual_thrust.data[i]);
-        interp_state.individual_thrust.data.push_back(interpolated_thrust);
-      }
-    } else {
-      interp_state.individual_thrust.data = state_prev.individual_thrust.data;
-    }
-
-    sampled_trajectory.push_back(interp_state);
-  }
-
-  if (count_hover == qty_points) {
-    is_hover_ = true;
-  }
-
-  hover_wait_waypoint_                       = sampled_trajectory[0];
-  hover_wait_waypoint_.use_linear_velocity   = false;
-  hover_wait_waypoint_.use_angular_velocity  = false;
-  hover_wait_waypoint_.use_individual_thrust = false;
-
-  return sampled_trajectory;
+const std::vector<laser_msgs::msg::ReferenceState> & AgilePlanner::getTrajectory() const
+{
+  return full_trajectory_path_;
 }
-//}
 
-/* isHover() //{ */
-bool AgilePlanner::isHover() {
-  return is_hover_;
+const std::vector<double> & AgilePlanner::getTrajectoryTimes() const
+{
+  return trajectory_time_;
 }
-//}
 
 /* setMass() //{ */
 void AgilePlanner::setMass(double mass) {

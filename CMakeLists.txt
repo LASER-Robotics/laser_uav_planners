@@ -4,7 +4,6 @@ project(laser_uav_planners)
 if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 17)
   set(CMAKE_CXX_STANDARD_REQUIRED ON)
-  set(CMAKE_BUILD_TYPE Debug)
 endif()
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
@@ -27,9 +26,9 @@ include_directories(
   ${EIGEN3_INCLUDE_DIR}
 )
 
-add_library(laser_uav_planners SHARED 
-  src/pmm_trajectory3d.cpp 
-  src/pmm_mg_trajectory3d.cpp 
+add_library(laser_uav_planners SHARED
+  src/pmm_trajectory3d.cpp
+  src/pmm_mg_trajectory3d.cpp
   src/common.cpp
   src/pmm_trajectory.cpp
   src/agile_planner.cpp

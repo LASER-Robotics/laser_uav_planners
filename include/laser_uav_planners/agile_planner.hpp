@@ -46,15 +46,13 @@ struct pmm_t
 
 class AgilePlanner {
 public:
-  AgilePlanner();
-  AgilePlanner(multirotor_t multirotor_params, pmm_t pmm_params, double controller_dt);
+  AgilePlanner(multirotor_t multirotor_params, pmm_t pmm_params);
 
   void generateTrajectory(laser_msgs::msg::ReferenceState start_waypoint, laser_msgs::msg::PoseWithHeading end_waypoint, float speed, bool use_speed);
   void generateTrajectory(laser_msgs::msg::ReferenceState start_waypoint, std::vector<laser_msgs::msg::PoseWithHeading> waypoints, float speed);
 
-  std::vector<laser_msgs::msg::ReferenceState> getTrajectory(int qty_points, double current_time);
-
-  bool isHover();
+  const std::vector<laser_msgs::msg::ReferenceState> & getTrajectory() const;
+  const std::vector<double> & getTrajectoryTimes() const;
   void setMass(double mass);
 
 private:
@@ -62,19 +60,11 @@ private:
 
   std::vector<pmm::Scalar>                     trajectory_time_;
   std::vector<laser_msgs::msg::ReferenceState> full_trajectory_path_;
-  laser_msgs::msg::ReferenceState              hover_wait_waypoint_;
   pmm_t                                        pmm_trajectory_capsule_;
 
   Eigen::Vector3d gravity{0.0, 0.0, -9.81};
 
   double          mass_;
   Eigen::MatrixXd G1_;
-  double          controller_dt_;
-
-  double start_trajectory_time_;
-
-  bool take_anchor_time_{false};
-  bool is_hover_{false};
-  bool generating_trajectory_{false};
 };
 }  // namespace laser_uav_planners
