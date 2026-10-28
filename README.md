@@ -1,51 +1,42 @@
 # LASER UAV Planners
 
-This package provides **C++ classes** that implement trajectory and motion planning algorithms for the Laser UAV System (LUS). It generates safe, optimized paths.
+Gitman collection of the planning backends used by the LASER UAV stack, following
+`laser_uav_lio-s`. This repository aggregates ROS packages; it does not build a
+planner library or expose a compatibility ROS package named `laser_uav_planners`.
 
-## Overview and Algorithms
+| Backend | ROS package | Role |
+| --- | --- | --- |
+| PMM | `pmm_planner` | Minimum-time trajectories for agile flight |
+| MINCO | `super_planner` | Minimum-snap trajectories using the existing MINCO-S4 solver |
+| SUPER | `super_planner` | Trajectories with obstacle avoidance |
 
-The main objective of this package is to receive a goal and, based on the vehicle's current state, generate a smooth trajectory.
+ROG-Map is fetched as SUPER's mapping dependency. The SUPER checkout also provides
+`mars_quadrotor_msgs`. MINCO uses the existing SUPER library without another copy
+of its solver or a separate `minco` package.
 
-### Agile Planner
--   **Description:** A class that use an optimal motion planning algorithm modified for our specific use case. It uses a **point-of-mass model [PMM] with thrust constraints** to incorporate vehicle limitations while remaining lightweight enough for real-time computation.
+## Install
 
--   **Reference:**
-    K. Teissing, M. Novosad, R. Penicka and M. Saska, "Real-Time Planning of Minimum-Time Trajectories for Agile UAV Flight," in IEEE Robotics and Automation Letters, vol. 9, no. 11, pp. 10351-10358, Nov. 2024, doi: 10.1109/LRA.2024.3471388.
+From the root of this repository:
 
--   **Configurable Parameters:**
-    ```yaml
-    agile_planner:
-      multirotor_parameters:
-        # This is a = F / M. F is maximum total thrust available
-        max_accel: 30.0 
+```bash
+gitman install
+```
 
-        # This is the maximum speed
-        max_vel: 16.0
+Gitman stores repositories in `.gitman/` and links them under `ros_packages/`.
+Every dependency uses `dev/separate_planning_and_control`. The PMM integration on
+that branch must be published to `LASER-Robotics/pmm_uav_planner` before a fresh
+remote installation can obtain it.
 
-        # This is default speed to goto
-        default_vel: 1.0
-        
-        absolute_maximum_angular_accel: 5.0 # rad/s²
+From the workspace root:
 
-      ltd_opt:
-        use_drag: false
-        thrust_decomp_acc_precision: 0.01
-        thrust_decomp_max_iter: 20
+```bash
+colcon build --packages-up-to laser_uav_managers
+```
 
-      first_vel_opt:
-        alpha: 10.0
-        alpha_reduction_factor: 0.2
-        alpha_min_threshold: 0.001
-        max_iter: 30
+Select `planner: pmm`, `planner: minco` or `planner: super` in the planning-manager
+setup YAML before starting. Each simulation session retains its own setup.
+Control and planning launches remain separate; simulation time is inferred from
+`REAL_UAV=false`.
 
-      second_vel_opt:
-        run: true
-        alpha: 35.0
-        alpha_reduction_factor: 0.1
-        alpha_min_threshold: 0.01
-        max_iter: 10
-
-      time:
-        dt_precision: 0.001
-        sampling_step: 0.0095 # DON'T CHANGE
-    ```
+The PMM backend returns raw states and relative times. Only `control_manager`
+interpolates reference horizons for its control timestep.

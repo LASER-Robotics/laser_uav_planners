@@ -1,0 +1,23 @@
+location: .gitman
+sources:
+  - repo: https://github.com/LASER-Robotics/pmm_uav_planner.git
+    name: pmm_planner
+    rev: dev/separate_planning_and_control
+    type: git
+    links:
+      - source: ''
+        target: ros_packages/pmm_planner
+  - repo: https://github.com/LASER-Robotics/super_planner.git
+    name: super_planner
+    rev: dev/separate_planning_and_control
+    type: git
+    links:
+      - source: ''
+        target: ros_packages/super_planner
+  - repo: https://github.com/LASER-Robotics/rog_map.git
+    name: rog_map
+    rev: dev/separate_planning_and_control
+    type: git
+    links:
+      - source: ''
+        target: ros_packages/rog_map
