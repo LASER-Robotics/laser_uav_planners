@@ -10,9 +10,10 @@ planner library or expose a compatibility ROS package named `laser_uav_planners`
 | MINCO | `super_planner` | Minimum-snap trajectories using the existing MINCO-S4 solver |
 | SUPER | `super_planner` | Trajectories with obstacle avoidance |
 
-ROG-Map is fetched as SUPER's mapping dependency. The SUPER checkout also provides
-`mars_quadrotor_msgs`. MINCO uses the existing SUPER library without another copy
-of its solver or a separate `minco` package.
+ROG-Map is provided by the separate `laser_uav_mappings` collection. SUPER retains
+its ROS dependency on `rog_map` and also provides `mars_quadrotor_msgs`. MINCO uses
+the existing SUPER library without another copy of its solver or a separate
+`minco` package.
 
 ## Install
 
@@ -27,9 +28,10 @@ Every dependency uses `dev/separate_planning_and_control`. The PMM integration o
 that branch must be published to `LASER-Robotics/pmm_uav_planner` before a fresh
 remote installation can obtain it.
 
-From the workspace root:
+From the workspace root, install the mapping collection too:
 
 ```bash
+gitman install --root src/laser_uav_mappings
 colcon build --packages-up-to laser_uav_managers
 ```
 

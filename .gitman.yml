@@ -14,10 +14,3 @@ sources:
     links:
       - source: ''
         target: ros_packages/super_planner
-  - repo: https://github.com/LASER-Robotics/rog_map.git
-    name: rog_map
-    rev: dev/separate_planning_and_control
-    type: git
-    links:
-      - source: ''
-        target: ros_packages/rog_map
