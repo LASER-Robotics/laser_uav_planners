@@ -24,9 +24,8 @@ gitman install
 ```
 
 Gitman stores repositories in `.gitman/` and links them under `ros_packages/`.
-Every dependency uses `dev/separate_planning_and_control`. The PMM integration on
-that branch must be published to `LASER-Robotics/pmm_uav_planner` before a fresh
-remote installation can obtain it.
+Every dependency uses `stable`. Merge the planning integration into each backend's
+`stable` branch before a fresh remote installation.
 
 From the workspace root, install the mapping collection too:
 
